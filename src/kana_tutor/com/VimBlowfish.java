@@ -1,9 +1,7 @@
 package kana_tutor.com;
 
-import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
 
 
 public class VimBlowfish {
@@ -12,9 +10,10 @@ public class VimBlowfish {
         return b >= ' ' && b <= '~';
     }
 
+    @SuppressWarnings("StringConcatenationInLoop")
     private static String bytesToString(byte[] bytesIn) {
         String rv = "";
-        StringBuffer sb = null;
+        StringBuffer sb;
 
         for(int i = 0; i < bytesIn.length; i += 16) {
             sb = new StringBuffer(String.format("%3d)", i));

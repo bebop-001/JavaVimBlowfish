@@ -23,7 +23,7 @@ public class VimBlowfish {
                 if (j == 7 && bytesIn.length > 7) sb.append(" |");
             }
             while (sb.length() < 58) sb.append(" ");
-            for (int j = 0; j < 16; j++) {
+            for (int j = 0; j < 16 && i + j < bytesIn.length; j++) {
                 byte b = bytesIn[i + j];
                 sb.append(String.format("%c", (isPrintable(b)) ? (char) b : 'ø'));
                 if (j == 7) sb.append(" | ");
@@ -53,27 +53,42 @@ public class VimBlowfish {
         'd7dc49413209238b057a8613deff90a0c1d8b0ffb34e484e7d85b31d0d7fce15'
 
     */
+    // calculate the hex-digest of the bytes in.  Hex-digest is just
+    // a hex con-concatonization string of the bytes.
     private static String hexdigest(byte[] bytes) {
         StringBuilder sb = new StringBuilder();
-        System.out.println(bytesToString(bytes));
         for (byte b : bytes)
             sb.append(String.format("%02x", b & 0xff));
         return sb.toString();
     }
+    // after first pass, byte digest will always be the same size.  Use
+    // the same array as much as possible since it's accessed in a 1000
+    // loop for.
+    private static byte[] byteDigest = null;
+    private static byte[] vimDigest(String hexdigest, byte[] salt) {
+        byte[] hd = hexdigest.getBytes();
+        int l = hd.length + salt.length;
+        if (byteDigest == null || byteDigest.length  != l)
+            byteDigest = new byte[l];
+        for (int i = 0; i < l; i++) {
+            if (i < hd.length)
+                byteDigest[i] = hd[i];
+            else
+                byteDigest[i] = salt[i - hd.length];
+        }
+        return byteDigest;
+    }
     private static byte[] passwordToKey(String pw, byte[] salt)
             throws NoSuchAlgorithmException {
-        byte[] rv = {};
         MessageDigest md = MessageDigest.getInstance("SHA-256");
-        ByteBuffer inputBytes = ByteBuffer.allocate(512);
-        inputBytes.put(pw.getBytes());
-        inputBytes.put(salt);
-        String hexString = null;
+        md.update(vimDigest(pw, salt));
+        String hd;
         for(int i = 0; i < 1000; i++) {
-            md.update(inputBytes);
-            hexString = hexdigest(md.digest());
+            hd = hexdigest(md.digest());
+            md.update(vimDigest(hd, salt));
         }
-
-        return rv;
+        byteDigest = null;
+        return md.digest();
     }
     private static byte[] xor(byte[] a, byte[] b) {
         int min = (a.length < b.length) ? a.length : b.length;
@@ -92,6 +107,7 @@ public class VimBlowfish {
 
         try {
             byte[] key = passwordToKey(pw, seed);
+            System.out.println("key:\n" + bytesToString(key));
         } catch (NoSuchAlgorithmException e) {
             e.printStackTrace();
         }

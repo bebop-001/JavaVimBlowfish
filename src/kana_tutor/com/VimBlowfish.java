@@ -97,19 +97,41 @@ public class VimBlowfish {
         return c;
     }
 
-    VimBlowfish() {
+    boolean passwordTest() {
+        String password = "hello";
         byte[] seed = {
-            (byte)0x09, (byte)0x5b, (byte)0x17, (byte)0xda
-            , (byte)0xdc, (byte)0xd0, (byte)0xb7, (byte)0x16
+                (byte)0x09, (byte)0x5b, (byte)0x17, (byte)0xda
+                , (byte)0xdc, (byte)0xd0, (byte)0xb7, (byte)0x16
         };
-        String pw = "hello";
+        byte[] expectedResult = {
+            (byte)0xf0, (byte)0x28, (byte)0x69, (byte)0xc9
+            , (byte)0x2c, (byte)0x50, (byte)0xc3, (byte)0x5a
+            , (byte)0xc2, (byte)0xd7, (byte)0x2c, (byte)0x4e
+            , (byte)0x41, (byte)0x12, (byte)0x57, (byte)0x2b
+            , (byte)0x64, (byte)0x5e, (byte)0x44, (byte)0xf1
+            , (byte)0x36, (byte)0x51, (byte)0x30, (byte)0xea
+            , (byte)0x6e, (byte)0x68, (byte)0x3c, (byte)0x95
+            , (byte)0xd3, (byte)0x84, (byte)0x41, (byte)0xf1
+        };
 
+        byte[] key;
+        boolean passed = true;
         try {
-            byte[] key = passwordToKey(pw, seed);
-            System.out.println("key:\n" + bytesToString(key));
+            key = passwordToKey(password, seed);
+            // System.out.println("key:\n" + bytesToString(key));
+            if (key.length == expectedResult.length) {
+                for(int i = 0; i < expectedResult.length && passed; i++) {
+                    passed = expectedResult[i] == key[i];
+                }
+            }
         } catch (NoSuchAlgorithmException e) {
+            passed = false;
             e.printStackTrace();
         }
+        return passed;
+    }
+
+    VimBlowfish() {
     }
 
 

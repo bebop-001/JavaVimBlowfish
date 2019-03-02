@@ -4,6 +4,7 @@ import java.security.NoSuchAlgorithmException;
 
 public class SelfTest {
 
+    // info gathered by use of vim for use in testing.
     private static final byte[] VIM_MAGIC = "VimCrypt~03!'".getBytes();
     private static final String testPassword = "hello";
     private static final byte[] testSalt = {
@@ -87,5 +88,32 @@ public class SelfTest {
             e.printStackTrace();
         }
         return passed;
+    }
+    boolean testDecrypt() {
+        boolean rv = true;
+        VimBlowfish bf = new VimBlowfish(encryptedFile);
+        if (! bf.isVimEncrypted()) {
+            System.err.println("Failed to detect encrypted file as vim encrypted.");
+            rv = false;
+        }
+        return rv;
+    }
+    boolean testEncrypt() {
+        boolean rv = true;
+        VimBlowfish bf = new VimBlowfish(plaintextFile);
+        if (bf.isVimEncrypted()) {
+            System.err.println("Detected plaintext file as vim encrypted.");
+            rv = false;
+        }
+        return rv;
+    }
+    SelfTest() {
+        System.out.println("Password test:"
+                + ((passwordTest()) ? "Passed" : "FAILED"));
+        System.out.println("Decrypt test:"
+                + ((testDecrypt()) ? "Passed" : "FAILED"));
+        System.out.println("Encrypt test:"
+                + ((testEncrypt()) ? "Passed" : "FAILED"));
+
     }
 }

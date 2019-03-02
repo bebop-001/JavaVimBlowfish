@@ -1,5 +1,6 @@
 package kana_tutor.com;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.security.MessageDigest;
@@ -80,8 +81,77 @@ public class VimBlowfish {
     void encrypt(
         InputStream plaintextIn, OutputStream cryptedOut, String password) {
     }
+    private int byteCmp(byte[] buf, byte[] cmpTo) {
+        int rv = buf.length - cmpTo.length;
+        if (rv == 0) {
+            for (int i = 0; i < buf.length && rv == 0; i++)
+                rv = (buf[i] & 0xff) - (cmpTo[i] & 0xff);
+        }
+        return rv;
+    }
+    private int byteCmp(byte[] buf, String cmpTo) {
+        return byteCmp(buf, cmpTo.getBytes());
+    }
+    class Reader {
+        final int bufSize = 1024;
+        private byte[] inBuf = new byte[bufSize];
+        boolean isVimMagic = false;
+        byte[] seed = null; byte[] salt = null;
+        int start = 0, end = 0;
+        InputStream inStream;
+        byte[] read(int x) throws IOException {
+            byte[] rv = new byte[0];
+            if (x > end - start) {
+                // not enough bytes
+                if (x - (end - start) <= 0) {
+                    // first read
+                    if (end == 0) {
+                        end = inStream.read(inBuf);
+                        if (end == -1)
+                            throw new IOException("First read failed.");
+                    }
+                    else {
+                        int newEnd = 0;
+                        while (start < end)
+                            inBuf[newEnd++] = inBuf[start++];
+                        end = newEnd;
+                        start = 0;
+                        int result
+                            = inStream.read(inBuf, start, bufSize - start);
+                        if (result > 0)
+                            end = start + result;
+                    }
+                }
+                if (end - start > 0) {
+                    if (x > end - start)
+                        x = end - start;
+                    if (x > 0) {
+                        rv = new byte[x];
+                        for (int i = 0; i < x && start < end; i++)
+                            rv[i] = inBuf[start++];
+                    }
+                }
+            }
+            return rv;
+        }
+        void reset() {
+            start = 0;
+        }
+        Reader(InputStream inStream) throws IOException {
+            this.inStream = inStream;
+            if (byteCmp(read(VIM_MAGIC.length), VIM_MAGIC) == 0) {
+                isVimMagic = true;
+                seed = read(8);
+                salt = read(8);
+           }
+           else
+               reset();
+        }
+    }
     void decrypt(
-        InputStream cryptedIn, OutputStream plaintextOut, String password) {
+        InputStream ciphertextIn, OutputStream plaintextOut, String password)
+            throws IOException {
+        Reader in = new Reader(ciphertextIn);
     }
 
     boolean isEncrypted = true;

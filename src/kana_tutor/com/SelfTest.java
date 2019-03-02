@@ -1,5 +1,7 @@
 package kana_tutor.com;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.security.NoSuchAlgorithmException;
 
 public class SelfTest {
@@ -24,7 +26,8 @@ public class SelfTest {
         , (byte)0x6f
     };
     private static final byte[] encryptedFile = new byte[
-        VIM_MAGIC.length + testSalt.length + testSalt.length + encrypted.length];
+        VIM_MAGIC.length + testSalt.length + testSalt.length + encrypted.length
+    ];
     static {
         int i = 0;
         for (byte b : VIM_MAGIC)    encryptedFile[i++] = b;
@@ -32,7 +35,8 @@ public class SelfTest {
         for (byte b: testSeed)      encryptedFile[i++] = b;
         for (byte b: encrypted)     encryptedFile[i++] = b;
     }
-    private static final byte[] plaintextFile = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".getBytes();
+    private static final byte[]
+        plaintextFile = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".getBytes();
     private static final byte[] debugKey = {
         (byte)0xf0, (byte)0x28, (byte)0x69, (byte)0xc9, (byte)0x2c
         , (byte)0x50, (byte)0xc3, (byte)0x5a, (byte)0xc2, (byte)0xd7
@@ -72,7 +76,7 @@ public class SelfTest {
         return rv;
     }
 
-    boolean passwordTest() {
+    private boolean passwordTest() {
         byte[] key;
         boolean passed = true;
         try {
@@ -89,24 +93,35 @@ public class SelfTest {
         }
         return passed;
     }
-    boolean testDecrypt() {
+    private boolean testDecrypt() {
         boolean rv = true;
         VimBlowfish bf = new VimBlowfish(encryptedFile);
         if (! bf.isVimEncrypted()) {
-            System.err.println("Failed to detect encrypted file as vim encrypted.");
+            System.err.println(
+                "Failed to detect encrypted file as vim encrypted.");
             rv = false;
         }
+        ByteArrayInputStream encrypted = new ByteArrayInputStream(encryptedFile);
+        ByteArrayOutputStream plaintext = new ByteArrayOutputStream(256);
+        bf.decrypt(encrypted, plaintext, testPassword);
         return rv;
     }
-    boolean testEncrypt() {
+    private boolean testEncrypt() {
         boolean rv = true;
         VimBlowfish bf = new VimBlowfish(plaintextFile);
         if (bf.isVimEncrypted()) {
-            System.err.println("Detected plaintext file as vim encrypted.");
+            System.err.println("Failed to detect plaintext file as plaintext");
             rv = false;
         }
+        ByteArrayInputStream plaintext
+            = new ByteArrayInputStream(plaintextFile);
+        ByteArrayOutputStream encrypted
+            = new ByteArrayOutputStream(256);
+        bf.__encrypt(plaintext, encrypted, testPassword
+            , testSeed, testSalt);
         return rv;
     }
+    
     SelfTest() {
         System.out.println("Password test:"
                 + ((passwordTest()) ? "Passed" : "FAILED"));

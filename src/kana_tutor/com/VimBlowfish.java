@@ -1,37 +1,12 @@
 package kana_tutor.com;
 
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
-
 public class VimBlowfish {
 
-    private static boolean isPrintable(byte b) {
-        return b >= ' ' && b <= '~';
-    }
-
-    @SuppressWarnings("StringConcatenationInLoop")
-    private static String bytesToString(byte[] bytesIn) {
-        String rv = "";
-        StringBuffer sb;
-
-        for(int i = 0; i < bytesIn.length; i += 16) {
-            sb = new StringBuffer(String.format("%3d)", i));
-            for (int j = 0; j < 16 && i + j < bytesIn.length; j++) {
-                sb.append(String.format(" %02x", bytesIn[i + j] & 0xff));
-                if (j == 7 && bytesIn.length > 7) sb.append(" |");
-            }
-            while (sb.length() < 58) sb.append(" ");
-            for (int j = 0; j < 16 && i + j < bytesIn.length; j++) {
-                byte b = bytesIn[i + j];
-                sb.append(String.format("%c", (isPrintable(b)) ? (char) b : 'ø'));
-                if (j == 7) sb.append(" | ");
-            }
-            sb.append("\n");
-            rv += sb.toString();
-        }
-        return rv;
-    }
 
     /*
         from Python vimBlowfish
@@ -77,7 +52,7 @@ public class VimBlowfish {
         }
         return byteDigest;
     }
-    private static byte[] passwordToKey(String pw, byte[] salt)
+    protected static byte[] passwordToKey(String pw, byte[] salt)
             throws NoSuchAlgorithmException {
         MessageDigest md = MessageDigest.getInstance("SHA-256");
         md.update(vimDigest(pw, salt));
@@ -89,6 +64,7 @@ public class VimBlowfish {
         byteDigest = null;
         return md.digest();
     }
+    private static final byte[] VIM_MAGIC = "VimCrypt~03!'".getBytes();
     private static byte[] xor(byte[] a, byte[] b) {
         int min = (a.length < b.length) ? a.length : b.length;
         byte[] c = new byte[min];
@@ -96,46 +72,22 @@ public class VimBlowfish {
             c[i] = (byte) ((a[i] ^ b[i]) & 0xff);
         return c;
     }
-
-    boolean passwordTest() {
-        String password = "hello";
-        byte[] seed = {
-                (byte)0x09, (byte)0x5b, (byte)0x17, (byte)0xda
-                , (byte)0xdc, (byte)0xd0, (byte)0xb7, (byte)0x16
-        };
-        byte[] expectedResult = {
-            (byte)0xf0, (byte)0x28, (byte)0x69, (byte)0xc9
-            , (byte)0x2c, (byte)0x50, (byte)0xc3, (byte)0x5a
-            , (byte)0xc2, (byte)0xd7, (byte)0x2c, (byte)0x4e
-            , (byte)0x41, (byte)0x12, (byte)0x57, (byte)0x2b
-            , (byte)0x64, (byte)0x5e, (byte)0x44, (byte)0xf1
-            , (byte)0x36, (byte)0x51, (byte)0x30, (byte)0xea
-            , (byte)0x6e, (byte)0x68, (byte)0x3c, (byte)0x95
-            , (byte)0xd3, (byte)0x84, (byte)0x41, (byte)0xf1
-        };
-
-        byte[] key;
-        boolean passed = true;
-        try {
-            key = passwordToKey(password, seed);
-            // System.out.println("key:\n" + bytesToString(key));
-            if (key.length == expectedResult.length) {
-                for(int i = 0; i < expectedResult.length && passed; i++) {
-                    passed = expectedResult[i] == key[i];
-                }
-            }
-        } catch (NoSuchAlgorithmException e) {
-            passed = false;
-            e.printStackTrace();
-        }
-        return passed;
+    // should be called from encrypt or SelfTest only.
+    protected void __encrypt(
+        InputStream plaintextIn, OutputStream cryptedOut, String password
+        , byte[] seed, byte[] salt) {
+    }
+    void encrypt(
+        InputStream plaintextIn, OutputStream cryptedOut, String password) {
+    }
+    void decrypt(
+        InputStream cryptedIn, OutputStream plaintextOut, String password) {
     }
 
-    VimBlowfish() {
+    boolean isEncrypted = true;
+    boolean isVimEncrypted() {return isEncrypted;}
+    VimBlowfish(byte[] bytesIn) {
+        for(int i= 0; i < VIM_MAGIC.length && isEncrypted && i < bytesIn.length; i++)
+            isEncrypted = bytesIn[i] == VIM_MAGIC[i];
     }
-
-
 }
-
-
-

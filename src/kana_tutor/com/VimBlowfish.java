@@ -65,7 +65,7 @@ public class VimBlowfish {
         byteDigest = null;
         return md.digest();
     }
-    private static final byte[] VIM_MAGIC = "VimCrypt~03!'".getBytes();
+    private static final byte[] VIM_MAGIC = "VimCrypt~03!".getBytes();
     private static byte[] xor(byte[] a, byte[] b) {
         int min = (a.length < b.length) ? a.length : b.length;
         byte[] c = new byte[min];
@@ -75,11 +75,8 @@ public class VimBlowfish {
     }
     // should be called from encrypt or SelfTest only.
     protected void __encrypt(
-        InputStream plaintextIn, OutputStream cryptedOut, String password
+        InputStream plaintextIn, OutputStream cipherOut, String password
         , byte[] seed, byte[] salt) {
-    }
-    void encrypt(
-        InputStream plaintextIn, OutputStream cryptedOut, String password) {
     }
     private int byteCmp(byte[] buf, byte[] cmpTo) {
         int rv = buf.length - cmpTo.length;
@@ -94,16 +91,16 @@ public class VimBlowfish {
     }
     class Reader {
         final int bufSize = 1024;
-        private byte[] inBuf = new byte[bufSize];
-        boolean isVimMagic = false;
+        private final byte[] inBuf = new byte[bufSize];
+        boolean hasVimMagic = false;
         byte[] seed = null; byte[] salt = null;
         int start = 0, end = 0;
-        InputStream inStream;
+        final InputStream inStream;
         byte[] read(int x) throws IOException {
             byte[] rv = new byte[0];
             if (x > end - start) {
                 // not enough bytes
-                if (x - (end - start) <= 0) {
+                if (x > (end - start)) {
                     // first read
                     if (end == 0) {
                         end = inStream.read(inBuf);
@@ -117,47 +114,78 @@ public class VimBlowfish {
                         end = newEnd;
                         start = 0;
                         int result
-                            = inStream.read(inBuf, start, bufSize - start);
+                                = inStream.read(inBuf, start, bufSize - start);
                         if (result > 0)
                             end = start + result;
                     }
                 }
-                if (end - start > 0) {
-                    if (x > end - start)
-                        x = end - start;
-                    if (x > 0) {
-                        rv = new byte[x];
-                        for (int i = 0; i < x && start < end; i++)
-                            rv[i] = inBuf[start++];
-                    }
+            }
+            if (end - start > 0) {
+                // if we're here and x > end - start, we read and
+                // probably got nothing.  Return the last few bytes
+                // and call it good.  This or next read will return 0
+                // bytes which indicates there ain't no more.
+                if (x > end - start)
+                    x = end - start;
+                if (x > 0) {
+                    rv = new byte[x];
+                    for (int i = 0; i < x && start < end; i++)
+                        rv[i] = inBuf[start++];
                 }
             }
             return rv;
         }
-        void reset() {
-            start = 0;
+        boolean isEncrypted() {
+            return hasVimMagic;
         }
+        byte[] getSeed() {return seed;}
+        byte[] getSalt() {return salt;}
         Reader(InputStream inStream) throws IOException {
             this.inStream = inStream;
-            if (byteCmp(read(VIM_MAGIC.length), VIM_MAGIC) == 0) {
-                isVimMagic = true;
-                seed = read(8);
-                salt = read(8);
+            if (byteCmp(this.read(VIM_MAGIC.length), VIM_MAGIC) == 0) {
+                hasVimMagic = true;
+                seed = this.read(8);
+                salt = this.read(8);
            }
            else
-               reset();
+               start = 0;
         }
     }
-    void decrypt(
-        InputStream ciphertextIn, OutputStream plaintextOut, String password)
-            throws IOException {
-        Reader in = new Reader(ciphertextIn);
+    private void decrypt(Reader reader, OutputStream plaintextOut, String password)
+            throws IOException, NoSuchAlgorithmException {
+        byte[] ciphertext, plaintext, iv, key;
+        key = passwordToKey(password, reader.getSalt());
+        iv = reader.getSeed();
+        ciphertext = reader.read(8);
+        while(ciphertext.length > 0) {
+            System.out.println(SelfTest.bytesToString(ciphertext));
+            ciphertext = reader.read(8);
+        }
     }
+    private void encrypt(Reader reader, OutputStream cipherOut, String password)
+        throws IOException, NoSuchAlgorithmException  {
+        byte[] ciphertext, plaintext, iv, key;
+        // key = passwordToKey(password, reader.getSalt());
+        iv = reader.getSeed();
+        plaintext = reader.read(8);
+        while(plaintext.length > 0) {
+            System.out.println(new String(plaintext));
+            plaintext = reader.read(8);
+        }
 
-    boolean isEncrypted = true;
-    boolean isVimEncrypted() {return isEncrypted;}
-    VimBlowfish(byte[] bytesIn) {
-        for(int i= 0; i < VIM_MAGIC.length && isEncrypted && i < bytesIn.length; i++)
-            isEncrypted = bytesIn[i] == VIM_MAGIC[i];
+    }
+    VimBlowfish(InputStream inStream, OutputStream outStream, String passwd)
+            throws IOException {
+        Reader reader = new Reader(inStream);
+        try {
+            if (reader.isEncrypted()) {
+                    decrypt(reader, outStream, passwd);
+            }
+            else
+                encrypt(reader, outStream, passwd);
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException(
+                "failed to create key from password:" + e.getMessage());
+        }
     }
 }

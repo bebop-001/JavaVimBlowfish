@@ -2,6 +2,7 @@ package kana_tutor.com;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.security.NoSuchAlgorithmException;
 
 public class SelfTest {
@@ -54,7 +55,7 @@ public class SelfTest {
 
     // debug function prints debug-like output for bytes in.
     @SuppressWarnings("StringConcatenationInLoop")
-    private static String bytesToString(byte[] bytesIn) {
+    public static String bytesToString(byte[] bytesIn) {
         String rv = "";
         StringBuffer sb;
 
@@ -93,42 +94,42 @@ public class SelfTest {
         }
         return passed;
     }
-    private boolean testDecrypt() {
-        boolean rv = true;
-        VimBlowfish bf = new VimBlowfish(encryptedFile);
-        if (! bf.isVimEncrypted()) {
-            System.err.println(
-                "Failed to detect encrypted file as vim encrypted.");
-            rv = false;
-        }
-        ByteArrayInputStream encrypted = new ByteArrayInputStream(encryptedFile);
-        ByteArrayOutputStream plaintext = new ByteArrayOutputStream(256);
-        bf.decrypt(encrypted, plaintext, testPassword);
-        return rv;
-    }
-    private boolean testEncrypt() {
-        boolean rv = true;
-        VimBlowfish bf = new VimBlowfish(plaintextFile);
-        if (bf.isVimEncrypted()) {
-            System.err.println("Failed to detect plaintext file as plaintext");
-            rv = false;
-        }
-        ByteArrayInputStream plaintext
-            = new ByteArrayInputStream(plaintextFile);
-        ByteArrayOutputStream encrypted
-            = new ByteArrayOutputStream(256);
-        bf.__encrypt(plaintext, encrypted, testPassword
-            , testSeed, testSalt);
-        return rv;
-    }
-    
-    SelfTest() {
+
+    @SuppressWarnings({"UnusedAssignment", "ConstantConditions"})
+    public SelfTest() {
         System.out.println("Password test:"
                 + ((passwordTest()) ? "Passed" : "FAILED"));
-        System.out.println("Decrypt test:"
-                + ((testDecrypt()) ? "Passed" : "FAILED"));
-        System.out.println("Encrypt test:"
-                + ((testEncrypt()) ? "Passed" : "FAILED"));
+        try {
+            ByteArrayInputStream encrypted = new ByteArrayInputStream(encryptedFile);
+            ByteArrayOutputStream plaintext = new ByteArrayOutputStream(256);
+            VimBlowfish bf = new VimBlowfish(encrypted, plaintext, testPassword);
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+        }
 
+        try {
+            /*
+             * Create a long string to test Reader overflow.
+             */
+            ByteArrayInputStream plaintext = null;
+            if (false) {
+                char ch = 'A';
+                byte[] longString = new byte[0x1024 + 18];
+                for (int i = 0; i < longString.length; i++) {
+                    longString[i] = ((i % 0x1024) == 0) ? (byte)'-' : (byte) ch;
+                    if (++ch > 'Z') ch = 'A';
+                }
+                plaintext = new ByteArrayInputStream(longString);
+            }
+            else {
+                 plaintext = new ByteArrayInputStream(plaintextFile);
+            }
+            ByteArrayOutputStream encrypted = new ByteArrayOutputStream(256);
+            VimBlowfish bf = new VimBlowfish(plaintext, encrypted, testPassword);
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 }

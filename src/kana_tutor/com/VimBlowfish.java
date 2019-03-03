@@ -89,6 +89,7 @@ public class VimBlowfish {
     private int byteCmp(byte[] buf, String cmpTo) {
         return byteCmp(buf, cmpTo.getBytes());
     }
+    private static final int BLOCK_SIZE = 8;
     class Reader {
         final int bufSize = 1024;
         private final byte[] inBuf = new byte[bufSize];
@@ -144,8 +145,8 @@ public class VimBlowfish {
             this.inStream = inStream;
             if (byteCmp(this.read(VIM_MAGIC.length), VIM_MAGIC) == 0) {
                 hasVimMagic = true;
-                seed = this.read(8);
-                salt = this.read(8);
+                seed = this.read(BLOCK_SIZE);
+                salt = this.read(BLOCK_SIZE);
            }
            else
                start = 0;
@@ -156,10 +157,10 @@ public class VimBlowfish {
         byte[] ciphertext, plaintext, iv, key;
         key = passwordToKey(password, reader.getSalt());
         iv = reader.getSeed();
-        ciphertext = reader.read(8);
+        ciphertext = reader.read(BLOCK_SIZE);
         while(ciphertext.length > 0) {
             System.out.println(SelfTest.bytesToString(ciphertext));
-            ciphertext = reader.read(8);
+            ciphertext = reader.read(BLOCK_SIZE);
         }
     }
     private void encrypt(Reader reader, OutputStream cipherOut, String password)
@@ -167,10 +168,10 @@ public class VimBlowfish {
         byte[] ciphertext, plaintext, iv, key;
         // key = passwordToKey(password, reader.getSalt());
         iv = reader.getSeed();
-        plaintext = reader.read(8);
+        plaintext = reader.read(BLOCK_SIZE);
         while(plaintext.length > 0) {
             System.out.println(new String(plaintext));
-            plaintext = reader.read(8);
+            plaintext = reader.read(BLOCK_SIZE);
         }
 
     }

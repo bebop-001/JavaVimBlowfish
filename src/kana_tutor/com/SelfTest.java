@@ -71,7 +71,8 @@ public class SelfTest {
                 sb.append(String.format("%c", (isPrintable(b)) ? (char) b : 'ø'));
                 if (j == 7) sb.append(" | ");
             }
-            sb.append("\n");
+            if (bytesIn.length > i + 16)
+                sb.append("\n");
             rv += sb.toString();
         }
         return rv;

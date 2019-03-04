@@ -1,12 +1,25 @@
 package kana_tutor.com;
 
+import Cipher.Blowfish.BlowfishECB;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
+import static kana_tutor.com.SelfTest.bytesToString;
+
 public class VimBlowfish {
+
+    static class Log {
+        static void d(String mess) {
+            System.out.print(mess);
+        }
+        static void i(String mess) {
+            System.out.print(mess);
+        }
+    }
 
 
     /*
@@ -65,7 +78,27 @@ public class VimBlowfish {
         byteDigest = null;
         return md.digest();
     }
-    private static final byte[] VIM_MAGIC = "VimCrypt~03!".getBytes();
+    public static class Cipher {
+        final BlowfishECB bf;
+        private void swapEnd(byte[] in) {
+            byte tmp;
+            int[] swo = {0,3,1,2,4,7,5,6};
+            for(int i = 0; i < swo.length; i += 2) {
+                tmp = in[swo[i]]; in[swo[i]] = in[swo[i+1]]; in[swo[i+1]] = tmp;
+            }
+        }
+        public Cipher(byte[] key) {
+            Log.d(String.format("key:len =%d:\n%s\n"
+                    , key.length, bytesToString(key)));
+            bf = new BlowfishECB(key);
+        }
+        public void encrypt(byte[] in, byte[] out) {
+            swapEnd(in);
+            bf.encrypt(in, out);
+            swapEnd(out);
+        }
+    }
+    public static final byte[] VIM_MAGIC = "VimCrypt~03!".getBytes();
     private static byte[] xor(byte[] a, byte[] b) {
         int min = (a.length < b.length) ? a.length : b.length;
         byte[] c = new byte[min];
@@ -89,7 +122,7 @@ public class VimBlowfish {
     private int byteCmp(byte[] buf, String cmpTo) {
         return byteCmp(buf, cmpTo.getBytes());
     }
-    private static final int BLOCK_SIZE = 8;
+    private static final int BLOCKSIZE = BlowfishECB.BLOCKSIZE;
     class Reader {
         final int bufSize = 1024;
         private final byte[] inBuf = new byte[bufSize];
@@ -98,7 +131,7 @@ public class VimBlowfish {
         int start = 0, end = 0;
         final InputStream inStream;
         byte[] read(int x) throws IOException {
-            byte[] rv = new byte[0];
+            byte[] rv = new byte[0]; // return 0 lenght on EOF.
             if (x > end - start) {
                 // not enough bytes
                 if (x > (end - start)) {
@@ -119,6 +152,8 @@ public class VimBlowfish {
                         if (result > 0)
                             end = start + result;
                     }
+                    Log.d(String.format("start = %d, end = %d, buffer:\n%s\n"
+                        , start, end, bytesToString(inBuf)));
                 }
             }
             if (end - start > 0) {
@@ -145,22 +180,46 @@ public class VimBlowfish {
             this.inStream = inStream;
             if (byteCmp(this.read(VIM_MAGIC.length), VIM_MAGIC) == 0) {
                 hasVimMagic = true;
-                seed = this.read(BLOCK_SIZE);
-                salt = this.read(BLOCK_SIZE);
+                seed = this.read(BLOCKSIZE);
+                salt = this.read(BLOCKSIZE);
+                Log.d(String.format("seed:\n%s\nsalt:\n%s\n",
+                    bytesToString(seed),bytesToString(seed)));
            }
            else
                start = 0;
         }
     }
+    /*
+     *             ciphertext[0]    /        ciphertext[N+1]   /
+     *                  |           /              |           /
+     *                  +-----+     /              +-----+     /
+     *                  |     |     /              |     |     /
+     *                  v     |     /              v     |     /
+     * IV--->D(key)-->(xor)   +-IV->/-->D(key)-->(xor)   +-IV->/  ETC...
+     *                  |           /              |           /
+     *                  v           /              v           /
+     *             plaintext[0]     /         plaintext[N+1]   /
+     */
     private void decrypt(Reader reader, OutputStream plaintextOut, String password)
             throws IOException, NoSuchAlgorithmException {
         byte[] ciphertext, plaintext, iv, key;
-        key = passwordToKey(password, reader.getSalt());
-        iv = reader.getSeed();
-        ciphertext = reader.read(BLOCK_SIZE);
+        key = passwordToKey(password, reader.getSeed());
+        Cipher bf = new Cipher(key);
+        byte[] c0 = new byte[BLOCKSIZE];
+        iv = reader.getSalt();
+        ciphertext = reader.read(BLOCKSIZE);
         while(ciphertext.length > 0) {
-            System.out.println(SelfTest.bytesToString(ciphertext));
-            ciphertext = reader.read(BLOCK_SIZE);
+            bf.encrypt(iv, c0);  // iv & c0 are length BLOCKSIZE.
+            plaintext = xor(c0, ciphertext); // before final read, ciphertext <= 8.
+            /* System.out.println("====\n"
+             *  + bytesToString(iv) + "\n"
+             *   + bytesToString(c0) + "\n"
+             *   + bytesToString(plaintext));
+             */
+            plaintextOut.write(plaintext);
+            iv = ciphertext;
+            ciphertext = reader.read(BLOCKSIZE);
+            Log.d(bytesToString(ciphertext) + "\n");
         }
     }
     private void encrypt(Reader reader, OutputStream cipherOut, String password)
@@ -168,10 +227,10 @@ public class VimBlowfish {
         byte[] ciphertext, plaintext, iv, key;
         // key = passwordToKey(password, reader.getSalt());
         iv = reader.getSeed();
-        plaintext = reader.read(BLOCK_SIZE);
+        plaintext = reader.read(BLOCKSIZE);
         while(plaintext.length > 0) {
-            System.out.println(new String(plaintext));
-            plaintext = reader.read(BLOCK_SIZE);
+            Log.d(new String(plaintext) + "\n");
+            plaintext = reader.read(BLOCKSIZE);
         }
 
     }
@@ -188,5 +247,7 @@ public class VimBlowfish {
             throw new RuntimeException(
                 "failed to create key from password:" + e.getMessage());
         }
+    }
+    protected VimBlowfish() {
     }
 }

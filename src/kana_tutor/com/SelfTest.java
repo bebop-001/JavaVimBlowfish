@@ -1,14 +1,19 @@
 package kana_tutor.com;
 
+import Cipher.Blowfish.BlowfishECB;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.security.NoSuchAlgorithmException;
 
+import static kana_tutor.com.VimBlowfish.*;
+
+import static java.lang.System.exit;
+
 public class SelfTest {
 
     // info gathered by use of vim for use in testing.
-    private static final byte[] VIM_MAGIC = "VimCrypt~03!'".getBytes();
     private static final String testPassword = "hello";
     private static final byte[] testSalt = {
         (byte)0x09, (byte)0x5b, (byte)0x17, (byte)0xda
@@ -51,6 +56,28 @@ public class SelfTest {
 
     private static boolean isPrintable(byte b) {
         return b >= ' ' && b <= '~';
+    }
+
+    /*
+     * From experience, I know that the bf encrypt routine from
+     * vim must encrypt 0 bytes with this bogus password and
+     * give encryptTest as a result.
+     */
+    private static final byte[] encryptTest = new byte[]{
+        (byte)0xdd, (byte)0x0c, (byte)0x25, (byte)0xf9
+        , (byte)0x8d, (byte)0x73, (byte)0xc9, (byte)0x37};
+    private static void testBlowfish() throws IOException {
+        if(! BlowfishECB.selfTest())
+            throw new IOException("BlowfishECB selftest Failed!");
+        byte[] key = "abcdefghijklmnopqrstuvwxyzABCDEF".getBytes();
+        VimBlowfish.Cipher bf = new VimBlowfish.Cipher(key);
+        byte[] test = new byte[] {0,0,0,0,0,0,0,0};
+        bf.encrypt(test, test);
+        boolean pass = true;
+        for(int i = 0; i < test.length && pass; i++)
+            pass = test[i] == encryptTest[i];
+        if (!pass)
+            throw new IOException("testBlowfish Failed!");
     }
 
     // debug function prints debug-like output for bytes in.
@@ -100,37 +127,45 @@ public class SelfTest {
     public SelfTest() {
         System.out.println("Password test:"
                 + ((passwordTest()) ? "Passed" : "FAILED"));
-        try {
-            ByteArrayInputStream encrypted = new ByteArrayInputStream(encryptedFile);
-            ByteArrayOutputStream plaintext = new ByteArrayOutputStream(256);
-            VimBlowfish bf = new VimBlowfish(encrypted, plaintext, testPassword);
-        }
-        catch (IOException e) {
-            e.printStackTrace();
-        }
 
         try {
-            /*
-             * Create a long string to test Reader overflow.
-             */
-            ByteArrayInputStream plaintext = null;
-            if (false) {
-                char ch = 'A';
-                byte[] longString = new byte[0x1024 + 18];
-                for (int i = 0; i < longString.length; i++) {
-                    longString[i] = ((i % 0x1024) == 0) ? (byte)'-' : (byte) ch;
-                    if (++ch > 'Z') ch = 'A';
-                }
-                plaintext = new ByteArrayInputStream(longString);
-            }
-            else {
-                 plaintext = new ByteArrayInputStream(plaintextFile);
-            }
-            ByteArrayOutputStream encrypted = new ByteArrayOutputStream(256);
-            VimBlowfish bf = new VimBlowfish(plaintext, encrypted, testPassword);
+            // test to make sure blowfish is working properly.
+            testBlowfish();
+            System.out.println("BlowfishECB selftest passed");
+
+            // test decrypt of known file.
+            ByteArrayInputStream encrypted = new ByteArrayInputStream(encryptedFile);
+            ByteArrayOutputStream plaintext = new ByteArrayOutputStream(256);
+            new VimBlowfish(encrypted, plaintext, testPassword);
+            String result = plaintext.toString();
+            if (result.endsWith(new String(plaintextFile)))
+                Log.i("Decrypt test passed.\n");
+            else
+                Log.i("Decrypt test FAILED.\n");
+            Log.i("Result = " + result);
+            exit(0);
+
         }
         catch (IOException e) {
-            e.printStackTrace();
+            throw new RuntimeException("Selftest FAILED:" + e.getMessage());
+        }
+
+        /*
+         * Create a long string to test Reader overflow.
+         */
+        //noinspection unused
+        ByteArrayInputStream plaintext = null;
+        if (false) {
+            char ch = 'A';
+            byte[] longString = new byte[0x1024 + 18];
+            for (int i = 0; i < longString.length; i++) {
+                longString[i] = ((i % 0x1024) == 0) ? (byte)'-' : (byte) ch;
+                if (++ch > 'Z') ch = 'A';
+            }
+            plaintext = new ByteArrayInputStream(longString);
+        }
+        else {
+             plaintext = new ByteArrayInputStream(plaintextFile);
         }
     }
 }

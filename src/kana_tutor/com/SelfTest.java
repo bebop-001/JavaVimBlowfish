@@ -9,9 +9,8 @@ import java.security.NoSuchAlgorithmException;
 
 import static kana_tutor.com.VimBlowfish.*;
 
-import static java.lang.System.exit;
-
 public class SelfTest {
+    private static final String TAG = "SelfTest";
 
     // info gathered by use of vim for use in testing.
     private static final String testPassword = "hello";
@@ -134,17 +133,36 @@ public class SelfTest {
             System.out.println("BlowfishECB selftest passed");
 
             // test decrypt of known file.
-            ByteArrayInputStream encrypted = new ByteArrayInputStream(encryptedFile);
-            ByteArrayOutputStream plaintext = new ByteArrayOutputStream(256);
-            new VimBlowfish(encrypted, plaintext, testPassword);
-            String result = plaintext.toString();
-            if (result.endsWith(new String(plaintextFile)))
-                Log.i("Decrypt test passed.\n");
-            else
-                Log.i("Decrypt test FAILED.\n");
-            Log.i("Result = " + result);
-            exit(0);
+            {
+                ByteArrayInputStream encrypted
+                    = new ByteArrayInputStream(encryptedFile);
+                ByteArrayOutputStream plaintext
+                    = new ByteArrayOutputStream(256);
+                new VimBlowfish(encrypted, plaintext, testPassword);
+                String result = plaintext.toString();
+                if (result.equals(new String(plaintextFile)))
+                    Log.i(TAG,"Decrypt test passed.\n");
+                else
+                    Log.i(TAG,"Decrypt test FAILED.\n");
+                // Log.i(TAG,"Result = " + result);
+            }
 
+            // test encryption with known salt/seed/file.
+            {
+                ByteArrayInputStream plaintext
+                    = new ByteArrayInputStream(plaintextFile);
+                ByteArrayOutputStream encrypted
+                    = new ByteArrayOutputStream(256);
+                new VimBlowfish(plaintext, encrypted, testPassword
+                    , testSeed, testSalt);
+                byte[] result = encrypted.toByteArray();
+                Log.d(TAG, String.format(
+                    "encrypeedt result:\n%s\n", bytesToString(result)));
+                if(byteCmp(result, encryptedFile) == 0)
+                    Log.i(TAG, "test plaintext -> encrypted passed.");
+                else
+                    Log.i(TAG, "test plaintext -> encrypted FAILED.");
+            }
         }
         catch (IOException e) {
             throw new RuntimeException("Selftest FAILED:" + e.getMessage());

@@ -25,6 +25,8 @@ public class Main {
 
         boolean doSelfTest = false;
         try {
+            if (args.length == 0)
+                throw new Exception("No arguments");
             for (int argc = 0; argc < args.length; argc++) {
                 String arg = args[argc];
                 if (arg.startsWith("-")) {

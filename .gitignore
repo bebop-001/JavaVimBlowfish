@@ -1,0 +1,7 @@
+
+/out
+
+*.swp
+*/.swp
+
+*/workspace.xml

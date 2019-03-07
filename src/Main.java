@@ -2,10 +2,8 @@ import kana_tutor.com.SelfTest;
 
 public class Main {
     private static final String USAGE
-    = "USAGE: JavaVimBlowfish [-t -s -f] inFile outFile [password]\n"
+    = "USAGE: JavaVimBlowfish [-t -f] inFile outFile [password]\n"
     + "  -t  Run the selftest, print results and exit\n"
-    + "  -s  Run the selftest, print results and and save to files, then\n"
-    + "      exit\n"
     + "  -f  force write to the output file if it exists.  If not set and the\n"
     + "      output file exists, we abort.\n"
     + "  inFile   the input file\n"
@@ -23,14 +21,20 @@ public class Main {
 
     public static void main(String[] args) {
 
-        boolean doSelfTest = false;
+        boolean doSelfTest = false, force = false;
         try {
             if (args.length == 0)
                 throw new Exception("No arguments");
             for (int argc = 0; argc < args.length; argc++) {
                 String arg = args[argc];
                 if (arg.startsWith("-")) {
-                    if (arg.equals("-t")) doSelfTest = true;
+                    if (arg.equals("-t")) {
+                        doSelfTest = true;
+                        if (args.length > 1)
+                            throw new Exception("for self test,  -t is only arg.  \""
+                                + String.join(" ", args) + "\" not valid.");
+                    }
+                    else if (arg.equals("-t")) force = true;
                     else
                         throw new Exception("Unrecognized '-' argument:" + arg);
                 }

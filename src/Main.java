@@ -70,8 +70,14 @@ public class Main {
                         "get password: Console is null"
                 );
                 String verify = "";
-                while (password == null || !verify.equals(password)) {
+                while (password == null
+                        || password.length() == 0
+                        || !verify.equals(password)) {
                     password = String.valueOf(cons.readPassword("Password:"));
+                    if (password.length() == 0) {
+                        System.err.println("Please enter a password.");
+                        continue;
+                    }
                     verify = String.valueOf(cons.readPassword("Verify Password:"));
                     if (!verify.equals(password))
                         System.err.println("Verify failed.");

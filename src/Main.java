@@ -1,4 +1,5 @@
 import kana_tutor.com.SelfTest;
+import java.io.Console;
 
 public class Main {
     private static final String USAGE
@@ -18,25 +19,62 @@ public class Main {
     + "  must be supplied.\n"
     + "\n";
 
-
+    // safe equals.  Test null false and string equals.
+    private static boolean sEquals(String s, String val) {
+        return (s != null && s.equals(val));
+    }
     public static void main(String[] args) {
 
         boolean doSelfTest = false, force = false;
+        String inFileName = null, outFileName = null, password = null;
         try {
-            if (args.length == 0)
-                throw new Exception("No arguments");
-            for (int argc = 0; argc < args.length; argc++) {
-                String arg = args[argc];
+            if (args.length == 0) throw new Exception(
+                "No arguments"
+            );
+            else for (String arg : args) {
                 if (arg.startsWith("-")) {
+                    if (arg.equals("-")) {
+                        if (inFileName == null) inFileName = arg;
+                        else if (outFileName == null) outFileName = arg;
+                        else throw new Exception(
+                                    "arg \"-\" not valid here.  "
+                                            + "  inFileName and outFileName are already "
+                                            + "assigned."
+                            );
+                    }
                     if (arg.equals("-t")) {
                         doSelfTest = true;
-                        if (args.length > 1)
-                            throw new Exception("for self test,  -t is only arg.  \""
-                                + String.join(" ", args) + "\" not valid.");
-                    }
-                    else if (arg.equals("-t")) force = true;
-                    else
-                        throw new Exception("Unrecognized '-' argument:" + arg);
+                        if (args.length > 1) throw new Exception(
+                                "for self test,  -t is only arg.  \""
+                                        + String.join(" ", args) + "\" not valid."
+                        );
+                    } else if (arg.equals("-f")) force = true;
+                    else throw new Exception(
+                                "Unrecognized '-' argument:" + arg
+                        );
+                }
+                else if (inFileName == null) inFileName = arg;
+                else if (outFileName == null) outFileName = arg;
+                else if (password == null) password = arg;
+                else throw new Exception(
+                        "all arguments already assigned."
+                );
+            }
+            if (password == null) {
+                if (sEquals(inFileName,"-") || sEquals(outFileName, "-"))
+                    throw new Exception("if stdin/stdout is used for input/output,"
+                        + " password must be assigned on command line."
+                );
+                Console cons = System.console();
+                if(cons == null) throw new RuntimeException(
+                        "get password: Console is null"
+                );
+                String verify = "";
+                while (password == null || !verify.equals(password)) {
+                    password = String.valueOf(cons.readPassword("Password:"));
+                    verify = String.valueOf(cons.readPassword("Verify Password:"));
+                    if (!verify.equals(password))
+                        System.err.println("Verify failed.");
                 }
             }
         }
@@ -45,7 +83,9 @@ public class Main {
             System.exit(1);
         }
         // command line parsed ok.
-        SelfTest selfTest = new SelfTest();
+        if (doSelfTest) {
+            new SelfTest();
+        }
         System.exit(0);
     }
 }

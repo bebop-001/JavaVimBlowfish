@@ -60,6 +60,14 @@ public class Main {
                         "all arguments already assigned."
                 );
             }
+            if (doSelfTest) {
+                try {
+                    new SelfTest();
+                } catch (Exception e) {
+                    System.err.println("Self test failed:" + e.getLocalizedMessage());
+                    System.exit(1);
+                }
+            }
             if (password == null) {
                 if (sEquals(inFileName,"-") || sEquals(outFileName, "-"))
                     throw new Exception("if stdin/stdout is used for input/output,"
@@ -89,9 +97,7 @@ public class Main {
             System.exit(1);
         }
         // command line parsed ok.
-        if (doSelfTest) {
-            new SelfTest();
-        }
+
         System.exit(0);
     }
 }

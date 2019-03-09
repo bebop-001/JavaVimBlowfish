@@ -1,13 +1,17 @@
 package kana_tutor.com;
 
 import Cipher.Blowfish.BlowfishECB;
+import util.ByteBuffer;
+import util.Log;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.security.NoSuchAlgorithmException;
 
+import static kana_tutor.com.Reader.byteCmp;
 import static kana_tutor.com.VimBlowfish.*;
+import static Cipher.Blowfish.BlowfishECB.BLOCKSIZE;
+
 
 public class SelfTest {
     private static final String TAG = "SelfTest";
@@ -104,86 +108,96 @@ public class SelfTest {
         return rv;
     }
 
-    private boolean passwordTest() {
+    private void passwordTest() throws Exception {
         byte[] key;
         boolean passed = true;
-        try {
-            key = VimBlowfish.passwordToKey(testPassword, testSalt);
-            // System.out.println("key:\n" + bytesToString(key));
-            if (key.length == debugKey.length) {
-                for(int i = 0; i < debugKey.length && passed; i++) {
-                    passed = debugKey[i] == key[i];
-                }
+        key = VimBlowfish.passwordToKey(testPassword, testSalt);
+        // System.out.println("key:\n" + bytesToString(key));
+        if (key.length == debugKey.length) {
+            for(int i = 0; i < debugKey.length && passed; i++) {
+                passed = debugKey[i] == key[i];
             }
-        } catch (NoSuchAlgorithmException e) {
-            passed = false;
-            e.printStackTrace();
         }
-        return passed;
+        if (!passed) throw new Exception(
+            "Password test failed. expected:\n"
+                + bytesToString(debugKey) + "\ngot:\n"
+                + bytesToString(debugKey) + "\n"
+        );
+    }
+
+    private void testReader() throws Exception {
+        // build a long byte array for testing.
+        byte[] expected = new byte[0x1024 + 18];
+        char ch = 'A';
+        for (int i = 0; i < expected.length; i++) {
+            expected[i] = ((i % 0x1024) == 0) ? (byte)'-' : (byte) ch;
+            if (++ch > 'Z') ch = 'A';
+        }
+        ByteArrayInputStream plaintext = new ByteArrayInputStream(expected);
+        Reader reader = new Reader(plaintext);
+        ByteBuffer bb = new ByteBuffer(1024);
+        byte[] buf = new byte[BLOCKSIZE];
+        int bytesRead = reader.read(buf);
+        while (bytesRead > 0) {
+            bb.append(buf, bytesRead);
+            bytesRead = reader.read(buf);
+        }
+        byte[] received = bb.getBytes();
+        if (byteCmp(expected, received) != 0) throw new Exception(
+                "testReader FAILED.  Excpected:\n"
+                + bytesToString(expected)
+                + "\nresult:\n" + bytesToString(received)
+        );
     }
 
     @SuppressWarnings({"UnusedAssignment", "ConstantConditions"})
-    public SelfTest() {
-        System.out.println("Password test:"
-                + ((passwordTest()) ? "Passed" : "FAILED"));
+    public SelfTest() throws Exception {
+        testReader();
+        Log.i(TAG,"test reader class passed.");
+        passwordTest();
+        Log.i(TAG, "password test passed.");
 
-        try {
-            // test to make sure blowfish is working properly.
-            testBlowfish();
-            System.out.println("BlowfishECB selftest passed");
+        // test to make sure blowfish is working properly.
+        testBlowfish();
+        Log.i(TAG, "BlowfishECB selftest passed");
 
-            // test decrypt of known file.
-            {
-                ByteArrayInputStream encrypted
-                    = new ByteArrayInputStream(encryptedFile);
-                ByteArrayOutputStream plaintext
-                    = new ByteArrayOutputStream(256);
-                new VimBlowfish(encrypted, plaintext, testPassword);
-                String result = plaintext.toString();
-                if (result.equals(new String(plaintextFile)))
-                    Log.i(TAG,"Decrypt test passed.\n");
-                else
-                    Log.i(TAG,"Decrypt test FAILED.\n");
-                // Log.i(TAG,"Result = " + result);
-            }
-
-            // test encryption with known salt/seed/file.
-            {
-                ByteArrayInputStream plaintext
-                    = new ByteArrayInputStream(plaintextFile);
-                ByteArrayOutputStream encrypted
-                    = new ByteArrayOutputStream(256);
-                new VimBlowfish(plaintext, encrypted, testPassword
-                    , testSeed, testSalt);
-                byte[] result = encrypted.toByteArray();
-                Log.d(TAG, String.format(
-                    "encrypeedt result:\n%s\n", bytesToString(result)));
-                if(byteCmp(result, encryptedFile) == 0)
-                    Log.i(TAG, "test plaintext -> encrypted passed.");
-                else
-                    Log.i(TAG, "test plaintext -> encrypted FAILED.");
-            }
+        // test decrypt of known file.
+        {
+            ByteArrayInputStream encrypted
+                = new ByteArrayInputStream(encryptedFile);
+            ByteArrayOutputStream plaintext
+                = new ByteArrayOutputStream(256);
+            new VimBlowfish(encrypted, plaintext, testPassword);
+            String result = plaintext.toString();
+            if (!result.equals(new String(plaintextFile)))
+                throw new Exception(
+                    "Decrypt test passed.\nExpected:\n"
+                    + bytesToString(plaintextFile) + "got:\n"
+                    + bytesToString(result.getBytes()) + "\n"
+            );
         }
-        catch (IOException e) {
-            throw new RuntimeException("Selftest FAILED:" + e.getMessage());
+
+        // test encryption with known salt/seed/file.
+        {
+            ByteArrayInputStream plaintext
+                = new ByteArrayInputStream(plaintextFile);
+            ByteArrayOutputStream encrypted
+                = new ByteArrayOutputStream(256);
+            new VimBlowfish(plaintext, encrypted, testPassword
+                , testSeed, testSalt);
+            byte[] result = encrypted.toByteArray();
+            if (!result.equals(new String(plaintextFile)))
+                throw new Exception(
+                        "Decrypt test passed.\nExpected:\n"
+                                + bytesToString(encryptedFile) + "got:\n"
+                                + bytesToString(result) + "\n"
+                );
+            Log.i(TAG, "test plaintext -> encrypted passed.");
         }
 
         /*
          * Create a long string to test Reader overflow.
          */
         //noinspection unused
-        ByteArrayInputStream plaintext = null;
-        if (false) {
-            char ch = 'A';
-            byte[] longString = new byte[0x1024 + 18];
-            for (int i = 0; i < longString.length; i++) {
-                longString[i] = ((i % 0x1024) == 0) ? (byte)'-' : (byte) ch;
-                if (++ch > 'Z') ch = 'A';
-            }
-            plaintext = new ByteArrayInputStream(longString);
-        }
-        else {
-             plaintext = new ByteArrayInputStream(plaintextFile);
-        }
     }
 }

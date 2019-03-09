@@ -1,30 +1,19 @@
 package kana_tutor.com;
 
 import Cipher.Blowfish.BlowfishECB;
+import util.Log;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.ArrayList;
-import java.util.List;
 
-import static java.lang.System.exit;
 import static kana_tutor.com.SelfTest.bytesToString;
+import static kana_tutor.com.Reader.blockCP;
 
 public class VimBlowfish {
     private static final String TAG = "VimBlowfish";
-
-    static class Log {
-        static void d(String tag, String mess) {
-            System.out.print(tag + "\n" + mess);
-        }
-        static void i(String tag, String mess) {
-            System.out.print(tag + "\n" + mess);
-        }
-    }
-
 
     /*
         from Python vimBlowfish
@@ -103,91 +92,13 @@ public class VimBlowfish {
         }
     }
     public static final byte[] VIM_MAGIC = "VimCrypt~03!".getBytes();
-    private static byte[] xor(byte[] a, byte[] b) {
-        int min = (a.length < b.length) ? a.length : b.length;
-        byte[] c = new byte[min];
-        for (int i = 0; i < min; i++)
-            c[i] = (byte) ((a[i] ^ b[i]) & 0xff);
-        return c;
-    }
-    public static int byteCmp(byte[] buf, byte[] cmpTo) {
-        int rv = buf.length - cmpTo.length;
-        if (rv == 0) {
-            for (int i = 0; i < buf.length && rv == 0; i++)
-                rv = (buf[i] & 0xff) - (cmpTo[i] & 0xff);
-        }
-        return rv;
-    }
-    private int byteCmp(byte[] buf, String cmpTo) {
-        return byteCmp(buf, cmpTo.getBytes());
+    // xor count bytes of block a with block b and put the result in block result.
+    private static void xor(byte[] a, byte[] b, byte[] result, int count) {
+        for (int i = 0; i < count; i++)
+            result[i] = (byte) ((a[i] ^ b[i]) & 0xff);
     }
     private static final int BLOCKSIZE = BlowfishECB.BLOCKSIZE;
-    class Reader {
-        final int bufSize = 1024;
-        private final byte[] inBuf = new byte[bufSize];
-        boolean hasVimMagic = false;
-        byte[] seed = null; byte[] salt = null;
-        int start = 0, end = 0;
-        final InputStream inStream;
-        byte[] read(int x) throws IOException {
-            byte[] rv = new byte[0]; // return 0 lenght on EOF.
-            if (x > end - start) {
-                // not enough bytes
-                if (x > (end - start)) {
-                    // first read
-                    if (end == 0) {
-                        end = inStream.read(inBuf);
-                        if (end == -1)
-                            throw new IOException("First read failed.");
-                    }
-                    else {
-                        int newEnd = 0;
-                        while (start < end)
-                            inBuf[newEnd++] = inBuf[start++];
-                        end = newEnd;
-                        start = 0;
-                        int result
-                                = inStream.read(inBuf, start, bufSize - start);
-                        if (result > 0)
-                            end = start + result;
-                    }
-                    Log.d(TAG, String.format("start = %d, end = %d, buffer:\n%s\n"
-                        , start, end, bytesToString(inBuf)));
-                }
-            }
-            if (end - start > 0) {
-                // if we're here and x > end - start, we read and
-                // probably got nothing.  Return the last few bytes
-                // and call it good.  This or next read will return 0
-                // bytes which indicates there ain't no more.
-                if (x > end - start)
-                    x = end - start;
-                if (x > 0) {
-                    rv = new byte[x];
-                    for (int i = 0; i < x && start < end; i++)
-                        rv[i] = inBuf[start++];
-                }
-            }
-            return rv;
-        }
-        boolean isEncrypted() {
-            return hasVimMagic;
-        }
-        byte[] getSeed() {return seed;}
-        byte[] getSalt() {return salt;}
-        Reader(InputStream inStream) throws IOException {
-            this.inStream = inStream;
-            if (byteCmp(this.read(VIM_MAGIC.length), VIM_MAGIC) == 0) {
-                hasVimMagic = true;
-                seed = this.read(BLOCKSIZE);
-                salt = this.read(BLOCKSIZE);
-                Log.d(TAG, String.format("seed:\n%s\nsalt:\n%s\n",
-                    bytesToString(seed),bytesToString(seed)));
-           }
-           else
-               start = 0;
-        }
-    }
+
     /*
      *             ciphertext[0]    /        ciphertext[N+1]   /
      *                  |           /              |           /
@@ -201,23 +112,26 @@ public class VimBlowfish {
      */
     private void decrypt(Reader reader, OutputStream plaintextOut, String password)
             throws IOException, NoSuchAlgorithmException {
-        byte[] ciphertext, plaintext, iv, key;
+        byte[] ciphertext = new byte[BLOCKSIZE]
+            , iv = new byte[BLOCKSIZE]
+            , plaintext = new byte[BLOCKSIZE]
+            , c0 = new byte[BLOCKSIZE]
+            , key;
         key = passwordToKey(password, reader.getSeed());
         Cipher bf = new Cipher(key);
-        byte[] c0 = new byte[BLOCKSIZE];
-        iv = reader.getSalt();
-        ciphertext = reader.read(BLOCKSIZE);
-        while(ciphertext.length > 0) {
+        blockCP(reader.getSalt(), iv);
+        int bytesRead = reader.read(ciphertext);
+        while(bytesRead > 0) {
             bf.encrypt(iv, c0);  // iv & c0 are length BLOCKSIZE.
-            plaintext = xor(c0, ciphertext); // before final read, ciphertext <= 8.
+            xor(c0, ciphertext, plaintext, bytesRead); // before final read, ciphertext <= 8.
             /* System.out.println("====\n"
              *  + bytesToString(iv) + "\n"
              *   + bytesToString(c0) + "\n"
              *   + bytesToString(plaintext));
              */
-            plaintextOut.write(plaintext);
+            plaintextOut.write(plaintext, 0, bytesRead);
             iv = ciphertext;
-            ciphertext = reader.read(BLOCKSIZE);
+            bytesRead = reader.read(ciphertext);
             Log.d(TAG, bytesToString(ciphertext) + "\n");
         }
     }
@@ -234,7 +148,11 @@ public class VimBlowfish {
      */
     private void encrypt(Reader reader, OutputStream cipherOut, String password)
         throws IOException, NoSuchAlgorithmException  {
-        byte[] ciphertext, plaintext, iv, key;
+        byte[] ciphertext = new byte[BLOCKSIZE]
+            , c0 = new byte[BLOCKSIZE]
+            , plaintext = new byte[BLOCKSIZE]
+            , iv = new byte[BLOCKSIZE]
+            , key;
         key = passwordToKey(password, reader.getSalt());
         // Write the header.
         cipherOut.write(VIM_MAGIC);
@@ -242,45 +160,30 @@ public class VimBlowfish {
         cipherOut.write(reader.getSeed());
 
         Cipher bf = new Cipher(key);
-        byte[] c0 = new byte[BLOCKSIZE];
-        iv = reader.getSeed();
-        plaintext = reader.read(BLOCKSIZE);
-        while(plaintext.length > 0) {
+        blockCP(reader.getSeed(), iv);
+        int bytesRead = reader.read(plaintext);
+        while(bytesRead > 0) {
             bf.encrypt(iv, c0);  // iv & c0 are length BLOCKSIZE.
-            ciphertext = xor(c0, plaintext); // before final read, ciphertext <= 8.
+            xor(c0, plaintext, plaintext, bytesRead); // before final read, ciphertext <= 8.
             cipherOut.write(ciphertext);
             iv = ciphertext;
-            plaintext = reader.read(BLOCKSIZE);
+            bytesRead = reader.read(plaintext);
             Log.d(TAG, bytesToString(ciphertext) + "\n");
         }
-    }
-    ArrayList<String[]> stackTrace() {
-        // class, method, file, line number
-        ArrayList<String[]> rv = new ArrayList<>();
-        StackTraceElement[] stElements = Thread.currentThread().getStackTrace();
-        for (int i = 0; i < stElements.length; i++) {
-            StackTraceElement ste = stElements[i];
-            rv.add(new String[] {
-                    ste.getClassName() + "." + ste.getMethodName()
-                    , ste.getFileName()
-                    , String.valueOf(ste.getLineNumber())
-            });
-        }
-        return rv;
     }
 
     VimBlowfish(InputStream inStream, OutputStream outStream, String passwd)
             throws IOException {
-        Reader reader = new Reader(inStream);
         try {
+            Reader reader = new Reader(inStream);
             if (reader.isEncrypted()) {
-                decrypt(reader, outStream, passwd);
+                    decrypt(reader, outStream, passwd);
             }
             else
                 encrypt(reader, outStream, passwd);
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException(
-                    "failed to create key from password:" + e.getMessage());
+        }
+        catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
         }
     }
     // for testing only, allow caller to set seed & salt.
@@ -289,27 +192,12 @@ public class VimBlowfish {
             throws IOException {
         Reader reader = new Reader(inStream);
         try {
-            // make sure we're only called from SelfTest.
-            String thisMethod = "kana_tutor.com.VimBlowfish.<init>";
-            String testMethod = "kana_tutor.com.SelfTest.<init>";
-            ArrayList<String[]> stack = stackTrace();
-            for(int i = 0; i < stack.size() - 1; i++) {
-                String method = stack.get(i)[0];
-                String nextMethod = stack.get(i + 1)[0];
-                if(method.equals(thisMethod)) {
-                    if (nextMethod.equals(testMethod))
-                        break;
-                    else
-                        throw new RuntimeException(
-                            "VimBlowfish with seed and salt should only be called from " + testMethod);
-                }
-            }
             if (reader.isEncrypted()) {
                 throw new RuntimeException("this instance createor is for testing encrypt only.");
             }
             else {
-                reader.seed = seed;
-                reader.salt = salt;
+                reader.setSeed(seed);
+                reader.setSalt(salt);
                 encrypt(reader, outStream, passwd);
             }
         } catch (NoSuchAlgorithmException e) {

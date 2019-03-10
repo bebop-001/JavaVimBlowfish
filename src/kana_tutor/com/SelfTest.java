@@ -8,9 +8,9 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
-import static kana_tutor.com.Reader.byteCmp;
 import static kana_tutor.com.VimBlowfish.*;
 import static Cipher.Blowfish.BlowfishECB.BLOCKSIZE;
+import static util.BytesDebug.*;
 
 
 public class SelfTest {
@@ -55,12 +55,6 @@ public class SelfTest {
         , (byte)0x68, (byte)0x3c, (byte)0x95, (byte)0xd3, (byte)0x84
         , (byte)0x41, (byte)0xf1
     };
-
-
-    private static boolean isPrintable(byte b) {
-        return b >= ' ' && b <= '~';
-    }
-
     /*
      * From experience, I know that the bf encrypt routine from
      * vim must encrypt 0 bytes with this bogus password and
@@ -82,37 +76,11 @@ public class SelfTest {
         if (!pass)
             throw new IOException("testBlowfish Failed!");
     }
-
-    // debug function prints debug-like output for bytes in.
-    @SuppressWarnings("StringConcatenationInLoop")
-    public static String bytesToString(byte[] bytesIn) {
-        String rv = "";
-        StringBuffer sb;
-
-        for(int i = 0; i < bytesIn.length; i += 16) {
-            sb = new StringBuffer(String.format("%3d)", i));
-            for (int j = 0; j < 16 && i + j < bytesIn.length; j++) {
-                sb.append(String.format(" %02x", bytesIn[i + j] & 0xff));
-                if (j == 7 && bytesIn.length > 7) sb.append(" |");
-            }
-            while (sb.length() < 58) sb.append(" ");
-            for (int j = 0; j < 16 && i + j < bytesIn.length; j++) {
-                byte b = bytesIn[i + j];
-                sb.append(String.format("%c", (isPrintable(b)) ? (char) b : 'ø'));
-                if (j == 7) sb.append(" | ");
-            }
-            if (bytesIn.length > i + 16)
-                sb.append("\n");
-            rv += sb.toString();
-        }
-        return rv;
-    }
-
     private void passwordTest() throws Exception {
         byte[] key;
         boolean passed = true;
         key = VimBlowfish.passwordToKey(testPassword, testSalt);
-        // System.out.println("key:\n" + bytesToString(key));
+        // System.out.println("key:\n" + bytesDebugString(key));
         if (key.length == debugKey.length) {
             for(int i = 0; i < debugKey.length && passed; i++) {
                 passed = debugKey[i] == key[i];
@@ -120,17 +88,17 @@ public class SelfTest {
         }
         if (!passed) throw new Exception(
             "Password test failed. expected:\n"
-                + bytesToString(debugKey) + "\ngot:\n"
-                + bytesToString(debugKey) + "\n"
+                + bytesDebugString(debugKey) + "\ngot:\n"
+                + bytesDebugString(debugKey) + "\n"
         );
     }
 
     private void testReader() throws Exception {
         // build a long byte array for testing.
-        byte[] expected = new byte[0x1024 + 18];
+        byte[] expected = new byte[1024 + 18];
         char ch = 'A';
         for (int i = 0; i < expected.length; i++) {
-            expected[i] = ((i % 0x1024) == 0) ? (byte)'-' : (byte) ch;
+            expected[i] = (i > 0 && (i % 1024) == 0) ? (byte)'-' : (byte) ch;
             if (++ch > 'Z') ch = 'A';
         }
         ByteArrayInputStream plaintext = new ByteArrayInputStream(expected);
@@ -138,16 +106,15 @@ public class SelfTest {
         ByteBuffer bb = new ByteBuffer(1024);
         byte[] buf = new byte[BLOCKSIZE];
         int bytesRead = reader.read(buf);
+        int i = 0;
         while (bytesRead > 0) {
+            Log.d(TAG, String.format("%d:buf:\n%s\n", i, bytesDebugString(buf)));
             bb.append(buf, bytesRead);
             bytesRead = reader.read(buf);
         }
         byte[] received = bb.getBytes();
-        if (byteCmp(expected, received) != 0) throw new Exception(
-                "testReader FAILED.  Excpected:\n"
-                + bytesToString(expected)
-                + "\nresult:\n" + bytesToString(received)
-        );
+        if (!bytesCmp(expected, received)) throw new Exception(
+            "testReader FAILED:\n" + getBytesCmpError() + "\n");
     }
 
     @SuppressWarnings({"UnusedAssignment", "ConstantConditions"})
@@ -172,8 +139,8 @@ public class SelfTest {
             if (!result.equals(new String(plaintextFile)))
                 throw new Exception(
                     "Decrypt test passed.\nExpected:\n"
-                    + bytesToString(plaintextFile) + "got:\n"
-                    + bytesToString(result.getBytes()) + "\n"
+                    + bytesDebugString(plaintextFile) + "got:\n"
+                    + bytesDebugString(result.getBytes()) + "\n"
             );
         }
 
@@ -189,8 +156,8 @@ public class SelfTest {
             if (!result.equals(new String(plaintextFile)))
                 throw new Exception(
                         "Decrypt test passed.\nExpected:\n"
-                                + bytesToString(encryptedFile) + "got:\n"
-                                + bytesToString(result) + "\n"
+                                + bytesDebugString(encryptedFile) + "got:\n"
+                                + bytesDebugString(result) + "\n"
                 );
             Log.i(TAG, "test plaintext -> encrypted passed.");
         }

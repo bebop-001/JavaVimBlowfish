@@ -5,20 +5,13 @@ import util.Log;
 import java.io.IOException;
 import java.io.InputStream;
 
-import static kana_tutor.com.SelfTest.bytesToString;
 import static kana_tutor.com.VimBlowfish.VIM_MAGIC;
 import static Cipher.Blowfish.BlowfishECB.BLOCKSIZE;
+import static util.BytesDebug.bytesCmp;
+import static util.BytesDebug.bytesDebugString;
 
 public class Reader {
     private static final String TAG = "Reader";
-    public static int byteCmp(byte[] buf, byte[] cmpTo) {
-        int rv = buf.length - cmpTo.length;
-        if (rv == 0) {
-            for (int i = 0; i < buf.length && rv == 0; i++)
-                rv = (buf[i] & 0xff) - (cmpTo[i] & 0xff);
-        }
-        return rv;
-    }
     public static void blockCP(byte[] src, byte[] dest) {
         System.arraycopy(src, 0, dest, 0, BLOCKSIZE);
     }
@@ -30,6 +23,7 @@ public class Reader {
             , salt = new byte[BLOCKSIZE];
     private int start = 0, end = 0;
     private final InputStream inStream;
+    @SuppressWarnings("WeakerAccess")
     int read(byte[] buf, int x) throws IOException {
         int rv = 0;
         if (x > end - start) {
@@ -52,11 +46,11 @@ public class Reader {
                     if (result > 0)
                         end = start + result;
                 }
-                Log.d(TAG, String.format("start = %d, end = %d, buffer:\n%s\n"
-                        , start, end, bytesToString(inBuf)));
+                Log.d(TAG, String.format("Reader buffer read start = %d, end = %d, buffer:\n%s\n"
+                        , start, end, bytesDebugString(inBuf, start, end)));
             }
         }
-        if (end - start > 0) {
+        if (end > start) {
             // if we're here and x > end - start, we read and
             // probably got nothing.  Return the last few bytes
             // and call it good.  This or next read will return 0
@@ -83,12 +77,13 @@ public class Reader {
     Reader(InputStream inStream) throws IOException {
         this.inStream = inStream;
         byte[] fileHead = new byte[VIM_MAGIC.length];
-        if (byteCmp(fileHead, VIM_MAGIC) == 0) {
+        read(fileHead);
+        if (bytesCmp(fileHead, VIM_MAGIC)) {
             hasVimMagic = true;
             read(seed);
             read(salt);
             Log.d(TAG, String.format("seed:\n%s\nsalt:\n%s\n",
-                    bytesToString(seed),bytesToString(seed)));
+                    bytesDebugString(seed),bytesDebugString(seed)));
         }
         else
             start = 0;

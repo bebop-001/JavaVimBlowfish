@@ -4,6 +4,8 @@
     <pattern value="kana_tutor.com.Reader" method="byteCmp" />
     <pattern value="util.ByteBuffer" method="append" />
     <pattern value="util.ByteBuffer" method="get" />
+    <pattern value="util.ByteBuffer" method="read" />
+    <pattern value="kana_tutor.com.Reader" method="Reader" />
   </component>
   <component name="ProjectRootManager" version="2" languageLevel="JDK_1_8" default="true" project-jdk-name="1.8" project-jdk-type="JavaSDK">
     <output url="file://$PROJECT_DIR$/out" />

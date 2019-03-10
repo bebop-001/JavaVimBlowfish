@@ -9,8 +9,8 @@ import java.io.OutputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
-import static kana_tutor.com.SelfTest.bytesToString;
 import static kana_tutor.com.Reader.blockCP;
+import static util.BytesDebug.bytesDebugString;
 
 public class VimBlowfish {
     private static final String TAG = "VimBlowfish";
@@ -82,7 +82,7 @@ public class VimBlowfish {
         }
         public Cipher(byte[] key) {
             Log.d(TAG, String.format("key:len =%d:\n%s\n"
-                    , key.length, bytesToString(key)));
+                    , key.length, bytesDebugString(key)));
             bf = new BlowfishECB(key);
         }
         public void encrypt(byte[] in, byte[] out) {
@@ -125,14 +125,14 @@ public class VimBlowfish {
             bf.encrypt(iv, c0);  // iv & c0 are length BLOCKSIZE.
             xor(c0, ciphertext, plaintext, bytesRead); // before final read, ciphertext <= 8.
             /* System.out.println("====\n"
-             *  + bytesToString(iv) + "\n"
-             *   + bytesToString(c0) + "\n"
-             *   + bytesToString(plaintext));
+             *  + bytesDebugString(iv) + "\n"
+             *   + bytesDebugString(c0) + "\n"
+             *   + bytesDebugString(plaintext));
              */
             plaintextOut.write(plaintext, 0, bytesRead);
             iv = ciphertext;
             bytesRead = reader.read(ciphertext);
-            Log.d(TAG, bytesToString(ciphertext) + "\n");
+            Log.d(TAG, bytesDebugString(ciphertext) + "\n");
         }
     }
     /*
@@ -168,7 +168,7 @@ public class VimBlowfish {
             cipherOut.write(ciphertext);
             iv = ciphertext;
             bytesRead = reader.read(plaintext);
-            Log.d(TAG, bytesToString(ciphertext) + "\n");
+            Log.d(TAG, bytesDebugString(ciphertext) + "\n");
         }
     }
 

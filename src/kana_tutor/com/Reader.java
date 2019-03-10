@@ -12,10 +12,6 @@ import static util.BytesDebug.bytesDebugString;
 
 public class Reader {
     private static final String TAG = "Reader";
-    public static void blockCP(byte[] src, byte[] dest) {
-        System.arraycopy(src, 0, dest, 0, BLOCKSIZE);
-    }
-
     private final int bufSize = 1024;
     private final byte[] inBuf = new byte[bufSize];
     private boolean hasVimMagic = false;
@@ -70,10 +66,28 @@ public class Reader {
     boolean isEncrypted() {
         return hasVimMagic;
     }
-    byte[] getSeed() {return seed;}
-    byte[] getSalt() {return salt;}
-    void setSeed(byte[] seedIn) {blockCP(seedIn, seed);}
-    void setSalt(byte[] saltIn) {blockCP(saltIn, salt);}
+    private void cpBytesBlock(String funcName, byte[] src, byte[] dest) {
+        if (src.length != dest.length) throw new RuntimeException(
+            String.format(
+                "%s: buffers should be same size..\n"
+                + "Found %d vs %d."
+                , src.length, dest.length
+            )
+        );
+        System.arraycopy(src, 0, dest, 0, src.length);
+    }
+    void getSeed(byte[] seed) {
+        cpBytesBlock("seed", this.seed, seed);
+    }
+    void getSalt(byte[] salt) {
+        cpBytesBlock("salt", this.salt, salt);
+    }
+    void setSeed(byte[] seed) {
+        cpBytesBlock("set seed:",seed, this.seed);
+    }
+    void setSalt(byte[] salt) {
+        cpBytesBlock("setSalt:", salt, this.salt);
+    }
     Reader(InputStream inStream) throws IOException {
         this.inStream = inStream;
         byte[] fileHead = new byte[VIM_MAGIC.length];

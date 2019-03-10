@@ -72,4 +72,16 @@ public class ByteBuffer {
     public int read(byte[] buf) throws IOException {
         return read(buf, buf.length);
     }
+
+    public static void cpBytesBlock(String funcName, byte[] src, byte[] dest) {
+        if (src.length != dest.length) throw new RuntimeException(
+                String.format(
+                        "%s: buffers should be same size..\n"
+                                + "Found %d vs %d."
+                        , src.length, dest.length
+                )
+        );
+        System.arraycopy(src, 0, dest, 0, src.length);
+    }
+
 }

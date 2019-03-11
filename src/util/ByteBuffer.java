@@ -5,11 +5,14 @@ package util;
 
 import java.io.IOException;
 
-@SuppressWarnings("WeakerAccess")
+@SuppressWarnings("ALL")
 public class ByteBuffer {
+    private static final String TAG = "ByteBuffer";
+
     private byte[] buffer;
     private int end = 0, readPointer = 0;
     private static final int blockSize = 256;
+
     public ByteBuffer(int initialSize) {
         buffer = new byte[initialSize];
     }
@@ -76,9 +79,9 @@ public class ByteBuffer {
     public static void cpBytesBlock(byte[] src, byte[] dest) {
         if (src.length != dest.length) throw new RuntimeException(
                 String.format(
-                        "%s: buffers should be same size..\n"
+                        "%s: cpBytesBlock buffers should be same size..\n"
                                 + "Found %d vs %d."
-                        , src.length, dest.length
+                        , TAG, src.length, dest.length
                 )
         );
         System.arraycopy(src, 0, dest, 0, src.length);

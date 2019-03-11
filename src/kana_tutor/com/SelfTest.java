@@ -159,10 +159,6 @@ public class SelfTest {
                         "Encryption test FAILED.\n" + getBytesCmpError());
             Log.i(TAG, "plaintext -> ciphertext passed.");
         }
-
-        /*
-         * Create a long string to test Reader overflow.
-         */
-        //noinspection unused
+        Log.i(TAG, "Succeeded.");
     }
 }

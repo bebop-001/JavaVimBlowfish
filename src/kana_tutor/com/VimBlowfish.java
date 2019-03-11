@@ -1,7 +1,6 @@
 package kana_tutor.com;
 
 import Cipher.Blowfish.BlowfishECB;
-import util.ByteBuffer;
 import util.Log;
 
 import java.io.IOException;
@@ -60,7 +59,7 @@ public class VimBlowfish {
         }
         return byteDigest;
     }
-    protected static byte[] passwordToKey(String pw, byte[] salt)
+    static byte[] passwordToKey(String pw, byte[] salt)
             throws NoSuchAlgorithmException {
         MessageDigest md = MessageDigest.getInstance("SHA-256");
         md.update(vimDigest(pw, salt));
@@ -75,7 +74,7 @@ public class VimBlowfish {
                 , key.length, bytesDebugString(key)));
         return key;
     }
-    public static class Cipher {
+    static class Cipher {
         final BlowfishECB bf;
         private void swapEnd(byte[] in) {
             byte tmp;
@@ -84,18 +83,18 @@ public class VimBlowfish {
                 tmp = in[swo[i]]; in[swo[i]] = in[swo[i+1]]; in[swo[i+1]] = tmp;
             }
         }
-        public Cipher(byte[] key) {
+        Cipher(byte[] key) {
             bf = new BlowfishECB(key);
         }
         final byte[] cpIn = new byte[BLOCKSIZE];
-        public void encrypt(byte[] in, byte[] out) {
+        void encrypt(byte[] in, byte[] out) {
             cpBytesBlock(in, cpIn); // cp so we don't step on in with swap.
             swapEnd(cpIn);
             bf.encrypt(cpIn, out);
             swapEnd(out);
         }
     }
-    public static final byte[] VIM_MAGIC = "VimCrypt~03!".getBytes();
+    static final byte[] VIM_MAGIC = "VimCrypt~03!".getBytes();
     // xor count bytes of block a with block b and put the result in block result.
     private static void xor(byte[] a, byte[] b, byte[] result, int count) {
         for (int i = 0; i < count; i++)
@@ -113,6 +112,9 @@ public class VimBlowfish {
      *                  |           /              |           /
      *                  v           /              v           /
      *             plaintext[0]     /         plaintext[N+1]   /
+     * NOTE: algorithm uses a byte-stealing padding algorithm so output
+     *       encrypted file is same length as decrypted file except
+     *       for the header.
      */
     private void decrypt(Reader reader, OutputStream plaintextOut, String password)
             throws IOException, NoSuchAlgorithmException {
@@ -127,6 +129,8 @@ public class VimBlowfish {
         key = passwordToKey(password, salt);
         Cipher bf = new Cipher(key);
         iv = seed;
+        // Keep track of bytes read because last write will be partial
+        // and the same length  as the (usually partial) block read.
         int bytesRead = reader.read(ciphertext);
         while(bytesRead > 0) {
             bf.encrypt(iv, c0);  // iv & c0 are length BLOCKSIZE.
@@ -152,6 +156,9 @@ public class VimBlowfish {
      *                  |           /              |           /
      *                  v           /              v           /
      *             ciphertext[0]    /        ciphertext[N+1]   /
+     * NOTE: algorithm uses a byte-stealing padding algorithm so output
+     *       encrypted file is same length as decrypted file except
+     *       for the header.
      */
     private void encrypt(Reader reader, OutputStream cipherOut, String password)
         throws IOException, NoSuchAlgorithmException  {
@@ -160,8 +167,7 @@ public class VimBlowfish {
             , salt = new byte[BLOCKSIZE]
             , seed = new byte[BLOCKSIZE]
             , plaintext = new byte[BLOCKSIZE]
-            , iv = new byte[BLOCKSIZE]
-            , key;
+            , iv, key;
         reader.getSalt(salt); reader.getSeed(seed);
         key = passwordToKey(password, salt);
         // Write the header.
@@ -171,6 +177,8 @@ public class VimBlowfish {
 
         Cipher bf = new Cipher(key);
         iv = seed;
+        // Keep track of bytes read because last write will be partial
+        // and the same length  as the (usually partial) block read.
         int bytesRead = reader.read(plaintext);
         while(bytesRead > 0) {
             bf.encrypt(iv, c0);  // iv & c0 are length BLOCKSIZE.
@@ -208,7 +216,7 @@ public class VimBlowfish {
         Reader reader = new Reader(inStream);
         try {
             if (reader.isEncrypted()) {
-                throw new RuntimeException("this instance createor is for testing encrypt only.");
+                throw new RuntimeException("this instance creator is for testing encrypt only.");
             }
             else {
                 reader.setSeed(seed);

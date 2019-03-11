@@ -31,6 +31,8 @@ public class Main {
         boolean doSelfTest = false, force = false;
         String inFileName = null, outFileName = null, password = null;
         try {
+            InputStream inStream = null;
+            OutputStream outputStream = null;
             if (args.length == 0) throw new Exception(
                 "No arguments"
             );
@@ -105,7 +107,8 @@ public class Main {
                 if (!inFile.canRead())
                     throw new IOException(String.format("Input file % is non=read."
                         , inFileName));
-                InputStream inStream = new FileInputStream(inFile);
+                inStream = new FileInputStream(inFile);
+                /*
                 byte[] buf = new byte[1024];
                 int bytesRead = 0, totalbytes = 0;
                 while((bytesRead = inStream.read(buf, 0, buf.length)) > 0) {
@@ -113,6 +116,20 @@ public class Main {
                     totalbytes += bytesRead;
                 }
                 System.out.println(String.format("total bytes:%d", totalbytes));
+                */
+            }
+            if (outFileName != null) {
+                File outFile = new File(outFileName);
+                if (outFile.exists() && ! force) throw new IOException(String.format(
+                        "Output file %s exists and no -f force option was set.\n"
+                        + "Please either remove the file or use the '-f' option"
+                        , outFile.getAbsoluteFile())
+                );
+                outputStream = new FileOutputStream(outFile);
+                /*
+                outputStream.write("hello world\n".getBytes());
+                outputStream.close();
+                */
             }
         }
         catch (Exception e) {

@@ -8,12 +8,12 @@ public class BytesDebug {
 
     // debug function prints debug-like output for bytes in.
     @SuppressWarnings("StringConcatenationInLoop")
-    public static String bytesDebugString(byte[] bytesIn, int start, int length) {
+    public static String bytesDebugString(byte[] bytesIn, int start, int length, int startIdx) {
         String rv = "";
         StringBuffer sb;
         int end = start + length;
         while (start < end) {
-            sb = new StringBuffer(String.format("%4d)", start));
+            sb = new StringBuffer(String.format("%4d)", startIdx));
             for (int j = 0; j < 16 && start + j < end; j++) {
                 sb.append(String.format(" %02x", bytesIn[start + j] & 0xff));
                 if (j == 7 && bytesIn.length > 7) sb.append(" |");
@@ -28,12 +28,16 @@ public class BytesDebug {
                 sb.append("\n");
             start += 16;
             rv += sb.toString();
+            startIdx += 16;
         }
         return rv;
     }
 
+    public static String bytesDebugString(byte[] bytesIn, int start, int end) {
+        return bytesDebugString(bytesIn, start, end, 0);
+    }
     public static String bytesDebugString(byte[] bytesIn) {
-        return bytesDebugString(bytesIn, 0, bytesIn.length);
+        return bytesDebugString(bytesIn, 0, bytesIn.length, 0);
     }
 
     private static String byteCmpErrors = "";

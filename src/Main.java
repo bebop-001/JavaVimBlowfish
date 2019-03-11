@@ -1,5 +1,8 @@
 import kana_tutor.com.SelfTest;
-import java.io.Console;
+
+import java.io.*;
+
+import static util.BytesDebug.bytesDebugString;
 
 public class Main {
     private static final String USAGE
@@ -77,7 +80,8 @@ public class Main {
                 );
                 Console cons = System.console();
                 if(cons == null) throw new RuntimeException(
-                        "get password: Console is null"
+                        "Can not getPassword on this system.  If you are running in an IDE\n"
+                        + "the IDE uses stdin/stdout and getPassword won't work."
                 );
                 String verify = "";
                 while (password == null
@@ -92,6 +96,23 @@ public class Main {
                     if (!verify.equals(password))
                         System.err.println("Verify failed.");
                 }
+            }
+            if (inFileName != null) {
+                File inFile = new File(inFileName);
+                if (! inFile.exists())
+                    throw new IOException(String.format("Input file % does not exist."
+                        , inFileName));
+                if (!inFile.canRead())
+                    throw new IOException(String.format("Input file % is non=read."
+                        , inFileName));
+                InputStream inStream = new FileInputStream(inFile);
+                byte[] buf = new byte[1024];
+                int bytesRead = 0, totalbytes = 0;
+                while((bytesRead = inStream.read(buf, 0, buf.length)) > 0) {
+                    System.out.println(bytesDebugString(buf, 0, bytesRead, totalbytes));
+                    totalbytes += bytesRead;
+                }
+                System.out.println(String.format("total bytes:%d", totalbytes));
             }
         }
         catch (Exception e) {

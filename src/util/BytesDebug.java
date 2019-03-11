@@ -44,36 +44,42 @@ public class BytesDebug {
 
     private static boolean cmpByteValues(
             byte[] buf1, byte[] buf2, int start, int length) {
-        int rv = 0;
+        if (buf1.length < length) length = buf1.length;
+        if (buf2.length < length) length = buf2.length;
         int idx = start;
-        while (idx < start + length && rv == 0) {
-            rv = (buf1[idx] & 0xff) - (buf2[idx] & 0xff);
+        boolean rv = true;
+        while (idx < start + length) {
+            if ((buf1[idx] & 0xff) != (buf2[idx] & 0xff)){
+                if (!byteCmpErrors.equals("")) byteCmpErrors += "\n";
+                byteCmpErrors = String.format(
+                        "Strings differ. offset = %d, buf 1 = 0x%02x, buf 2 = 0x%02x"
+                        , idx, buf1[idx], buf2[idx]
+                );
+                rv = false;
+                break;
+            }
             idx++;
         }
-        if (rv != 0)
-            byteCmpErrors = String.format(
-                    "Strings differ. index = %d, buf 1 = 0x%02x, buf 2 = 0x%02x"
-                    , idx - 1, buf1[idx - 1], buf2[idx - 1]
-            );
-        return rv == 0;
+        return rv;
     }
 
     public static boolean bytesCmp(byte[] buf1, byte[] buf2) {
         byteCmpErrors = "";
-        boolean rv = buf1.length == buf2.length;
-        if (!rv)
+        boolean lengthOK = buf1.length == buf2.length;
+        if (!lengthOK)
             byteCmpErrors = String.format(
             "array lengths differ: %d vs %d"
             , buf1.length, buf2.length);
-        else rv = cmpByteValues(buf1, buf2, 0, buf1.length);
-        return rv;
+        boolean bytesDifferError
+            = cmpByteValues(buf1, buf2, 0, buf1.length);
+        return lengthOK && bytesDifferError;
     }
 
     public static boolean bytesCmp(
             byte[] buf1, byte[] buf2, int start, int length) {
         int l = start + length;
-        boolean rv = buf1.length <= l && buf2.length <= l;
-        if (!rv) {
+        boolean lengthError = buf1.length <= l && buf2.length <= l;
+        if (!lengthError) {
             String err = "";
             if (buf1.length > l) err += String.format(
                 "Buffer 1 length < start + length: "
@@ -87,7 +93,8 @@ public class BytesDebug {
                         , buf2.length, l);
             }
         }
-        else rv = cmpByteValues(buf1, buf2, start, length);
-        return rv;
+        boolean bytesDifferError
+            = cmpByteValues(buf1, buf2, start, length);
+        return lengthError || bytesDifferError;
     }
 }

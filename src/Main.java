@@ -48,7 +48,8 @@ public class Main {
                                 "for self test,  -t is only arg.  \""
                                         + String.join(" ", args) + "\" not valid."
                         );
-                    } else if (arg.equals("-f")) force = true;
+                    }
+                    else if (arg.equals("-f")) force = true;
                     else throw new Exception(
                                 "Unrecognized '-' argument:" + arg
                         );
@@ -67,6 +68,7 @@ public class Main {
                     System.err.println("Self test failed:" + e.getLocalizedMessage());
                     System.exit(1);
                 }
+                System.exit(0);
             }
             if (password == null) {
                 if (sEquals(inFileName,"-") || sEquals(outFileName, "-"))

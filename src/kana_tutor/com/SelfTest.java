@@ -138,10 +138,11 @@ public class SelfTest {
             String result = plaintext.toString();
             if (!result.equals(new String(plaintextFile)))
                 throw new Exception(
-                    "Decrypt test passed.\nExpected:\n"
+                    "Decrypt test FAILED.\nExpected:\n"
                     + bytesDebugString(plaintextFile) + "got:\n"
                     + bytesDebugString(result.getBytes()) + "\n"
             );
+            Log.i(TAG, "ciphertext -> plaintext passed.");
         }
 
         // test encryption with known salt/seed/file.
@@ -153,13 +154,10 @@ public class SelfTest {
             new VimBlowfish(plaintext, encrypted, testPassword
                 , testSeed, testSalt);
             byte[] result = encrypted.toByteArray();
-            if (!result.equals(new String(plaintextFile)))
+            if (!bytesCmp(encryptedFile, result))
                 throw new Exception(
-                        "Decrypt test passed.\nExpected:\n"
-                                + bytesDebugString(encryptedFile) + "got:\n"
-                                + bytesDebugString(result) + "\n"
-                );
-            Log.i(TAG, "test plaintext -> encrypted passed.");
+                        "Encryption test FAILED.\n" + getBytesCmpError());
+            Log.i(TAG, "plaintext -> ciphertext passed.");
         }
 
         /*

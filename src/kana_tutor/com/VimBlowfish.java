@@ -1,6 +1,7 @@
 package kana_tutor.com;
 
 import Cipher.Blowfish.BlowfishECB;
+import util.ByteBuffer;
 import util.Log;
 
 import java.io.IOException;
@@ -9,7 +10,7 @@ import java.io.OutputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
-import static kana_tutor.com.Reader.blockCP;
+import static util.ByteBuffer.cpBytesBlock;
 import static util.BytesDebug.bytesDebugString;
 
 public class VimBlowfish {
@@ -69,7 +70,10 @@ public class VimBlowfish {
             md.update(vimDigest(hd, salt));
         }
         byteDigest = null;
-        return md.digest();
+        byte[] key = md.digest();
+        Log.d(TAG, String.format("key: len = %d: bytes\n%s"
+                , key.length, bytesDebugString(key)));
+        return key;
     }
     public static class Cipher {
         final BlowfishECB bf;
@@ -81,13 +85,13 @@ public class VimBlowfish {
             }
         }
         public Cipher(byte[] key) {
-            Log.d(TAG, String.format("key:len =%d:\n%s\n"
-                    , key.length, bytesDebugString(key)));
             bf = new BlowfishECB(key);
         }
+        final byte[] cpIn = new byte[BLOCKSIZE];
         public void encrypt(byte[] in, byte[] out) {
-            swapEnd(in);
-            bf.encrypt(in, out);
+            cpBytesBlock(in, cpIn); // cp so we don't step on in with swap.
+            swapEnd(cpIn);
+            bf.encrypt(cpIn, out);
             swapEnd(out);
         }
     }
@@ -113,26 +117,29 @@ public class VimBlowfish {
     private void decrypt(Reader reader, OutputStream plaintextOut, String password)
             throws IOException, NoSuchAlgorithmException {
         byte[] ciphertext = new byte[BLOCKSIZE]
-            , iv = new byte[BLOCKSIZE]
             , plaintext = new byte[BLOCKSIZE]
             , c0 = new byte[BLOCKSIZE]
-            , key;
-        key = passwordToKey(password, reader.getSeed());
+            , seed = new byte[BLOCKSIZE]
+            , salt = new byte[BLOCKSIZE]
+            , iv,key;
+        reader.getSalt(salt);
+        reader.getSeed(seed);
+        key = passwordToKey(password, salt);
         Cipher bf = new Cipher(key);
-        blockCP(reader.getSalt(), iv);
+        iv = seed;
         int bytesRead = reader.read(ciphertext);
         while(bytesRead > 0) {
             bf.encrypt(iv, c0);  // iv & c0 are length BLOCKSIZE.
-            xor(c0, ciphertext, plaintext, bytesRead); // before final read, ciphertext <= 8.
-            /* System.out.println("====\n"
-             *  + bytesDebugString(iv) + "\n"
-             *   + bytesDebugString(c0) + "\n"
-             *   + bytesDebugString(plaintext));
-             */
+            xor(c0, ciphertext, plaintext, bytesRead);
+            Log.d(TAG, String.format(
+                "decrypt:\niv:\n%s\nc0:\n%s\nciphertext:\n%s\nplaintext:\n%s\n"
+                    , bytesDebugString(iv)
+                    , bytesDebugString(c0)
+                    , bytesDebugString(ciphertext)
+                    , bytesDebugString(plaintext)));
             plaintextOut.write(plaintext, 0, bytesRead);
-            iv = ciphertext;
+            cpBytesBlock(ciphertext, iv);
             bytesRead = reader.read(ciphertext);
-            Log.d(TAG, bytesDebugString(ciphertext) + "\n");
         }
     }
     /*
@@ -150,25 +157,33 @@ public class VimBlowfish {
         throws IOException, NoSuchAlgorithmException  {
         byte[] ciphertext = new byte[BLOCKSIZE]
             , c0 = new byte[BLOCKSIZE]
+            , salt = new byte[BLOCKSIZE]
+            , seed = new byte[BLOCKSIZE]
             , plaintext = new byte[BLOCKSIZE]
             , iv = new byte[BLOCKSIZE]
             , key;
-        key = passwordToKey(password, reader.getSalt());
+        reader.getSalt(salt); reader.getSeed(seed);
+        key = passwordToKey(password, salt);
         // Write the header.
         cipherOut.write(VIM_MAGIC);
-        cipherOut.write(reader.getSalt());
-        cipherOut.write(reader.getSeed());
+        cipherOut.write(salt);
+        cipherOut.write(seed);
 
         Cipher bf = new Cipher(key);
-        blockCP(reader.getSeed(), iv);
+        iv = seed;
         int bytesRead = reader.read(plaintext);
         while(bytesRead > 0) {
             bf.encrypt(iv, c0);  // iv & c0 are length BLOCKSIZE.
-            xor(c0, plaintext, plaintext, bytesRead); // before final read, ciphertext <= 8.
-            cipherOut.write(ciphertext);
-            iv = ciphertext;
+            xor(c0, plaintext, ciphertext, bytesRead); // before final read, ciphertext <= 8.
+            Log.d(TAG, String.format(
+                    "encrypt:\niv:\n%s\nc0:\n%s\nciphertext:\n%s\nplaintext:\n%s\n"
+                    , bytesDebugString(iv)
+                    , bytesDebugString(c0)
+                    , bytesDebugString(ciphertext)
+                    , bytesDebugString(plaintext)));
+            cpBytesBlock(ciphertext, iv);
+            cipherOut.write(ciphertext, 0, bytesRead);
             bytesRead = reader.read(plaintext);
-            Log.d(TAG, bytesDebugString(ciphertext) + "\n");
         }
     }
 

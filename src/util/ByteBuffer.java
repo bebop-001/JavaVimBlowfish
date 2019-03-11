@@ -73,7 +73,7 @@ public class ByteBuffer {
         return read(buf, buf.length);
     }
 
-    public static void cpBytesBlock(String funcName, byte[] src, byte[] dest) {
+    public static void cpBytesBlock(byte[] src, byte[] dest) {
         if (src.length != dest.length) throw new RuntimeException(
                 String.format(
                         "%s: buffers should be same size..\n"

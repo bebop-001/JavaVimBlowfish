@@ -26,7 +26,7 @@ public class Reader {
             // not enough bytes
             if (x > (end - start)) {
                 // first read
-                if (end == 0) {
+                if (start == 0) {
                     end = inStream.read(inBuf);
                     if (end == -1)
                         throw new IOException("First read failed.");

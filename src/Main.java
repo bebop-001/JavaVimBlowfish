@@ -49,7 +49,7 @@ public class Main {
                                             + "assigned."
                             );
                     }
-                    if (arg.equals("-t")) {
+                    else if (arg.equals("-t")) {
                         doSelfTest = true;
                         if (args.length > 1) throw new Exception(
                                 "for self test,  -t is only arg.  \""
@@ -78,6 +78,9 @@ public class Main {
                 System.exit(0);
             }
             if (password == null) {
+                if (inFileName == null || outFileName == null) throw new Exception(
+                        "Input or output file not supplied."
+                );
                 if (sEquals(inFileName,"-") || sEquals(outFileName, "-"))
                     throw new Exception("if stdin/stdout is used for input/output,"
                         + " password must be assigned on command line."
@@ -113,6 +116,11 @@ public class Main {
                     if (!inFile.canRead())
                         throw new IOException(String.format("Input file % is non=read."
                                 , inFileName));
+                    if (inFile.length() <= 8)
+                        throw new IOException(String.format(
+                            "Input file %s must contain at least 8 bytes.  "
+                            + "Length is %d bytes."
+                            , inFileName, inFile.length()));
                     inStream = new FileInputStream(inFile);
                 }
                 /*

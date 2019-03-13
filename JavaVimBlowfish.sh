@@ -32,17 +32,17 @@ if [ ! -e $which ]; then
     exit 1;
 fi
 javac=`$which javac`;
-if [ ! -e $javac ]; then
+if [ "$javac" = "" -o ! -e $javac ]; then
     echo "Please add javac to your path." >2;
     exit 1;
 fi
 java=`$which java`;
-if [ ! -e $java ];
+if [ "$java" = "" -o ! -e $java ];
     then echo "Please add java to your path." >2;
     exit 1;
 fi
 jar=`$which jar`;
-if [ ! -e $jar ];
+if [ "$jar" = "" -o ! -e $jar ];
     then echo "Please add jar to your path." >2;
     exit 1;
 fi
@@ -70,9 +70,9 @@ classes="
 jarFile=javaVimBlowfish.jar
 
 # If our jar file isn't the newest of our files, rebuild.
-newest=`ls -t $jarFile $src $classes | head -1`;
-if [ "$newest" = "$jarFile" ]; then
-    make=false;
+newest=`ls -t $jarFile $src $classes 2> /dev/null | head -1`;
+if [ ! -f $jarFile -o "$newest" != "$jarFile" ]; then
+    make=true;
 fi
 if [ "$make" = "true" ]; then
     (
@@ -81,4 +81,4 @@ if [ "$make" = "true" ]; then
         $jar cfe ../$jarFile Main `find . -name \*.class`
     )
 fi
-$java -jar javaVimBlowfish.jar
+$java -jar javaVimBlowfish.jar $*

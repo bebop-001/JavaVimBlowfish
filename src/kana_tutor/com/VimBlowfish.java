@@ -131,16 +131,22 @@ public class VimBlowfish {
         iv = seed;
         // Keep track of bytes read because last write will be partial
         // and the same length  as the (usually partial) block read.
+        int totalBytes = 0;
         int bytesRead = reader.read(ciphertext);
         while(bytesRead > 0) {
+            totalBytes += bytesRead;
             bf.encrypt(iv, c0);  // iv & c0 are length BLOCKSIZE.
             xor(c0, ciphertext, plaintext, bytesRead);
+            /*
+            System.out.println("> " + new String(plaintext));
             Log.d(TAG, String.format(
                 "decrypt:\niv:\n%s\nc0:\n%s\nciphertext:\n%s\nplaintext:\n%s\n"
                     , bytesDebugString(iv)
                     , bytesDebugString(c0)
                     , bytesDebugString(ciphertext)
                     , bytesDebugString(plaintext)));
+                    */
+            System.out.printf("%4d:\"%s\"\n", totalBytes, new String(plaintext));
             plaintextOut.write(plaintext, 0, bytesRead);
             cpBytesBlock(ciphertext, iv);
             bytesRead = reader.read(ciphertext);
@@ -195,7 +201,7 @@ public class VimBlowfish {
         }
     }
 
-    VimBlowfish(InputStream inStream, OutputStream outStream, String passwd)
+    public VimBlowfish(InputStream inStream, OutputStream outStream, String passwd)
             throws IOException {
         try {
             Reader reader = new Reader(inStream);

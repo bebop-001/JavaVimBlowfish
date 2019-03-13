@@ -12,7 +12,7 @@ import static util.BytesDebug.bytesDebugString;
 
 public class Reader {
     private static final String TAG = "Reader";
-    private final int bufSize = 1024;
+    private final int bufSize = 2048;
     private final byte[] inBuf = new byte[bufSize];
     private boolean hasVimMagic = false;
     private final byte[] seed = new byte[BLOCKSIZE]
@@ -35,12 +35,11 @@ public class Reader {
                     int newEnd = 0;
                     while (start < end)
                         inBuf[newEnd++] = inBuf[start++];
-                    end = newEnd;
-                    start = 0;
+                    start = 0; end = newEnd;
                     int result
-                            = inStream.read(inBuf, start, bufSize - start);
+                            = inStream.read(inBuf, newEnd, bufSize - newEnd);
                     if (result > 0)
-                        end = start + result;
+                        end += result;
                 }
                 Log.d(TAG, String.format(
                     "buffer read start = %d, end = %d, buffer:\n%s\n"

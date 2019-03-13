@@ -1,8 +1,8 @@
 
 /out
-
-*.swp
-*/.swp
-
+**.swp
 */workspace.xml
 */encodings.xml
+**.class
+**.jar
+

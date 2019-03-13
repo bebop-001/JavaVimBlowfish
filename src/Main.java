@@ -1,6 +1,8 @@
 import kana_tutor.com.SelfTest;
+import kana_tutor.com.VimBlowfish;
 
 import java.io.*;
+import java.util.jar.JarEntry;
 
 import static util.BytesDebug.bytesDebugString;
 
@@ -100,14 +102,19 @@ public class Main {
                 }
             }
             if (inFileName != null) {
-                File inFile = new File(inFileName);
-                if (! inFile.exists())
-                    throw new IOException(String.format("Input file % does not exist."
-                        , inFileName));
-                if (!inFile.canRead())
-                    throw new IOException(String.format("Input file % is non=read."
-                        , inFileName));
-                inStream = new FileInputStream(inFile);
+                if (inFileName.equals(("-"))) {
+                    inStream = System.in;
+                }
+                else {
+                    File inFile = new File(inFileName);
+                    if (!inFile.exists())
+                        throw new IOException(String.format("Input file % does not exist."
+                                , inFileName));
+                    if (!inFile.canRead())
+                        throw new IOException(String.format("Input file % is non=read."
+                                , inFileName));
+                    inStream = new FileInputStream(inFile);
+                }
                 /*
                 byte[] buf = new byte[1024];
                 int bytesRead = 0, totalbytes = 0;
@@ -119,18 +126,24 @@ public class Main {
                 */
             }
             if (outFileName != null) {
-                File outFile = new File(outFileName);
-                if (outFile.exists() && ! force) throw new IOException(String.format(
-                        "Output file %s exists and no -f force option was set.\n"
-                        + "Please either remove the file or use the '-f' option"
-                        , outFile.getAbsoluteFile())
-                );
-                outputStream = new FileOutputStream(outFile);
+                if (outFileName.endsWith("-")) {
+                    outputStream = System.out;
+                }
+                else {
+                    File outFile = new File(outFileName);
+                    if (outFile.exists() && !force) throw new IOException(String.format(
+                            "Output file %s exists and no -f force option was set.\n"
+                                    + "Please either remove the file or use the '-f' option"
+                            , outFile.getAbsoluteFile())
+                    );
+                    outputStream = new FileOutputStream(outFile);
+                }
                 /*
                 outputStream.write("hello world\n".getBytes());
                 outputStream.close();
                 */
             }
+            new VimBlowfish(inStream, outputStream, password);
         }
         catch (Exception e) {
             System.err.print(USAGE + e.getMessage() + "\n");

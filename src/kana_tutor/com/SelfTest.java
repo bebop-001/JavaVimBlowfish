@@ -108,7 +108,6 @@ public class SelfTest {
         int bytesRead = reader.read(buf);
         int i = 0;
         while (bytesRead > 0) {
-            Log.d(TAG, String.format("%d:buf:\n%s\n", i, bytesDebugString(buf)));
             bb.append(buf, bytesRead);
             bytesRead = reader.read(buf);
         }

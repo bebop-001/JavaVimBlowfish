@@ -41,10 +41,6 @@ public class Reader {
                     if (result > 0)
                         end += result;
                 }
-                Log.d(TAG, String.format(
-                    "buffer read start = %d, end = %d, buffer:\n%s\n"
-                    , start, end, bytesDebugString(inBuf, start, end))
-                );
             }
         }
         if (end > start) {
@@ -97,8 +93,6 @@ public class Reader {
             hasVimMagic = true;
             read(salt);
             read(seed);
-            Log.d(TAG, String.format("seed:\n%s\nsalt:\n%s\n",
-                    bytesDebugString(seed),bytesDebugString(salt)));
         }
         else
             start = 0;

@@ -70,8 +70,6 @@ public class VimBlowfish {
         }
         byteDigest = null;
         byte[] key = md.digest();
-        Log.d(TAG, String.format("key: len = %d: bytes\n%s"
-                , key.length, bytesDebugString(key)));
         return key;
     }
     static class Cipher {
@@ -137,16 +135,6 @@ public class VimBlowfish {
             totalBytes += bytesRead;
             bf.encrypt(iv, c0);  // iv & c0 are length BLOCKSIZE.
             xor(c0, ciphertext, plaintext, bytesRead);
-            /*
-            System.out.println("> " + new String(plaintext));
-            Log.d(TAG, String.format(
-                "decrypt:\niv:\n%s\nc0:\n%s\nciphertext:\n%s\nplaintext:\n%s\n"
-                    , bytesDebugString(iv)
-                    , bytesDebugString(c0)
-                    , bytesDebugString(ciphertext)
-                    , bytesDebugString(plaintext)));
-                    */
-            System.out.printf("%4d:\"%s\"\n", totalBytes, new String(plaintext));
             plaintextOut.write(plaintext, 0, bytesRead);
             cpBytesBlock(ciphertext, iv);
             bytesRead = reader.read(ciphertext);
@@ -188,13 +176,7 @@ public class VimBlowfish {
         int bytesRead = reader.read(plaintext);
         while(bytesRead > 0) {
             bf.encrypt(iv, c0);  // iv & c0 are length BLOCKSIZE.
-            xor(c0, plaintext, ciphertext, bytesRead); // before final read, ciphertext <= 8.
-            Log.d(TAG, String.format(
-                    "encrypt:\niv:\n%s\nc0:\n%s\nciphertext:\n%s\nplaintext:\n%s\n"
-                    , bytesDebugString(iv)
-                    , bytesDebugString(c0)
-                    , bytesDebugString(ciphertext)
-                    , bytesDebugString(plaintext)));
+            xor(c0, plaintext, ciphertext, bytesRead);
             cpBytesBlock(ciphertext, iv);
             cipherOut.write(ciphertext, 0, bytesRead);
             bytesRead = reader.read(plaintext);

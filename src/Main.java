@@ -2,10 +2,8 @@ import kana_tutor.com.SelfTest;
 import kana_tutor.com.VimBlowfish;
 
 import java.io.*;
-import java.util.jar.JarEntry;
 
-import static util.BytesDebug.bytesDebugString;
-
+@SuppressWarnings({"IfCanBeSwitch", "ConstantConditions"})
 public class Main {
     private static final String USAGE
     = "USAGE: JavaVimBlowfish [-t -f] inFile outFile [password]\n"
@@ -25,6 +23,7 @@ public class Main {
     + "\n";
 
     // safe equals.  Test null false and string equals.
+    @SuppressWarnings("SameParameterValue")
     private static boolean sEquals(String s, String val) {
         return (s != null && s.equals(val));
     }
@@ -34,7 +33,7 @@ public class Main {
         String inFileName = null, outFileName = null, password = null;
         try {
             InputStream inStream = null;
-            OutputStream outputStream = null;
+            OutputStream outStream = null;
             if (args.length == 0) throw new Exception(
                 "No arguments"
             );
@@ -111,10 +110,10 @@ public class Main {
                 else {
                     File inFile = new File(inFileName);
                     if (!inFile.exists())
-                        throw new IOException(String.format("Input file % does not exist."
+                        throw new IOException(String.format("Input file %s does not exist."
                                 , inFileName));
                     if (!inFile.canRead())
-                        throw new IOException(String.format("Input file % is non=read."
+                        throw new IOException(String.format("Input file %s is non=read."
                                 , inFileName));
                     if (inFile.length() <= 8)
                         throw new IOException(String.format(
@@ -123,19 +122,10 @@ public class Main {
                             , inFileName, inFile.length()));
                     inStream = new FileInputStream(inFile);
                 }
-                /*
-                byte[] buf = new byte[1024];
-                int bytesRead = 0, totalbytes = 0;
-                while((bytesRead = inStream.read(buf, 0, buf.length)) > 0) {
-                    System.out.println(bytesDebugString(buf, 0, bytesRead, totalbytes));
-                    totalbytes += bytesRead;
-                }
-                System.out.println(String.format("total bytes:%d", totalbytes));
-                */
             }
             if (outFileName != null) {
                 if (outFileName.endsWith("-")) {
-                    outputStream = System.out;
+                    outStream = System.out;
                 }
                 else {
                     File outFile = new File(outFileName);
@@ -144,14 +134,10 @@ public class Main {
                                     + "Please either remove the file or use the '-f' option"
                             , outFile.getAbsoluteFile())
                     );
-                    outputStream = new FileOutputStream(outFile);
+                    outStream = new FileOutputStream(outFile);
                 }
-                /*
-                outputStream.write("hello world\n".getBytes());
-                outputStream.close();
-                */
             }
-            new VimBlowfish(inStream, outputStream, password);
+            new VimBlowfish(inStream, outStream, password);
         }
         catch (Exception e) {
             System.err.print(USAGE + e.getMessage() + "\n");

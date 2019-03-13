@@ -47,11 +47,11 @@ classes="
 jarFile=javaVimBlowfish.jar
 
 # If our jar file isn't the newest of our files, rebuild.
-newest=`ls -t $jarFile $src $classes | head -1`;
+newest=`ls -t $jarFile $src $classes 2> /dev/null | head -1`;
 if [ "$newest" = "$jarFile" ]; then
     make=false;
 fi
-if [ "$make" = "true" ]; then
+if [ ! -f $jarFile -o "$make" = "true" ]; then
     (
         $javac $src;
         cd src;
